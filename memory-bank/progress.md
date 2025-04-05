@@ -121,6 +121,8 @@ This document tracks the progress of the CreatorSync project development. It ser
 
 ## Current Development Status
 
+**CRITICAL BLOCKER:** The **Firebase Emulators require Java** to be installed and available in the system PATH. The error "Could not spawn `java -version`" prevents their use. **Resolving this Java dependency is the immediate priority** to enable local integration testing (Firestore rules, Cloud Functions, etc.) and proceed with further backend development.
+
 The Firebase Emulator Suite has been successfully configured for local development and testing. Security rules have been implemented for Firestore and Storage, and the necessary configuration files have been created. The emulator connection has been integrated into the Firebase configuration.
 
 All 'firestore' import errors have been fixed by updating the imports to use 'db' instead of 'firestore' across all service files. 
