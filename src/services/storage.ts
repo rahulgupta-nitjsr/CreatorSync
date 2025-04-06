@@ -152,6 +152,25 @@ export const uploadContentMedia = async (
 };
 
 /**
+ * Upload content media (image, video, etc.) specifically for a new content item.
+ * Generates a unique path based on user ID and timestamp.
+ * @param {File} file - Media file
+ * @param {string} userId - User ID
+ * @param {IUploadProgressCallback} progressCallback - Optional callback for upload progress
+ * @returns {Promise<string>} Download URL
+ */
+export const uploadContentFile = async (
+  file: File,
+  userId: string,
+  progressCallback?: IUploadProgressCallback
+): Promise<string> => {
+  // Generate a unique path like content/<userId>/<timestamp>-<random>.<ext>
+  const path = generateFilePath(userId, file.name, 'content');
+  console.log(`Uploading content file to: ${path}`); // Logging for debug
+  return uploadFile(file, path, progressCallback);
+};
+
+/**
  * List all files in a directory
  * @param {string} directoryPath - Path to the directory
  * @returns {Promise<string[]>} Array of download URLs

@@ -13,6 +13,9 @@ const customJestConfig = {
     // Handle module aliases
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  modulePathIgnorePatterns: [
+    '<rootDir>/creatorsync/' // Ignore nested project
+  ],
   testPathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '<rootDir>/.next/'

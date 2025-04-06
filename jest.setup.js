@@ -13,31 +13,6 @@ jest.mock('firebase/app', () => {
   };
 });
 
-jest.mock('firebase/auth', () => {
-  return {
-    getAuth: jest.fn(() => ({})),
-    onAuthStateChanged: jest.fn(),
-    signInWithEmailAndPassword: jest.fn(),
-    createUserWithEmailAndPassword: jest.fn(),
-    signOut: jest.fn(),
-    sendPasswordResetEmail: jest.fn(),
-    updateProfile: jest.fn(),
-    sendEmailVerification: jest.fn(),
-  };
-});
-
-jest.mock('firebase/firestore', () => {
-  return {
-    getFirestore: jest.fn(() => ({})),
-    doc: jest.fn(),
-    getDoc: jest.fn(),
-    setDoc: jest.fn(),
-    updateDoc: jest.fn(),
-    onSnapshot: jest.fn(),
-    serverTimestamp: jest.fn(() => new Date()),
-  };
-});
-
 jest.mock('firebase/functions', () => {
   return {
     getFunctions: jest.fn(() => ({})),

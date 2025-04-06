@@ -16,6 +16,8 @@ import {
   QueryConstraint
 } from 'firebase/firestore';
 import { db } from '@/firebase/config';
+import { Content } from '@/models/content';
+import { PlatformConnection } from '@/models/platformConnection';
 
 export interface ContentItem {
   id?: string;
@@ -332,5 +334,151 @@ export const deleteComment = async (
   } catch (error) {
     console.error('Error deleting comment:', error);
     throw error;
+  }
+};
+
+/**
+ * Create a new Content document in Firestore.
+ * @param {string} userId - The ID of the user creating the content.
+ * @param {Omit<Content, 'id' | 'createdAt' | 'updatedAt' | 'publishDate'>} contentData - Content data including mediaUrl, status etc.
+ * @returns {Promise<string>} The ID of the newly created document.
+ */
+export const createCreatorContent = async (
+  userId: string,
+  contentData: Omit<Content, 'id' | 'createdAt' | 'updatedAt' | 'publishDate' | 'userId' | 'error'>
+): Promise<string> => {
+  try {
+    const contentCollection = collection(db, 'creatorContent');
+    
+    const docData: Omit<Content, 'id'> = {
+      ...contentData,
+      userId,
+      status: contentData.scheduledDate ? 'scheduled' : 'draft',
+      publishDate: null,
+      createdAt: serverTimestamp() as Timestamp,
+      updatedAt: serverTimestamp() as Timestamp,
+      scheduledDate: contentData.scheduledDate ? Timestamp.fromDate(new Date(contentData.scheduledDate)) : null
+    };
+    
+    const docRef = await addDoc(contentCollection, docData);
+    console.log("Content document created with ID: ", docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error("Error creating content document: ", error);
+    throw new Error('Failed to save content metadata.');
+  }
+};
+
+/**
+ * Get all content documents for a specific user.
+ * @param {string} userId - The ID of the user whose content to fetch.
+ * @returns {Promise<Content[]>} An array of content documents.
+ */
+export const getUserContent = async (userId: string): Promise<Content[]> => {
+  try {
+    const contentCollection = collection(db, 'creatorContent');
+    const q = query(
+      contentCollection,
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    const contentList: Content[] = [];
+    querySnapshot.forEach((doc) => {
+      contentList.push({ id: doc.id, ...doc.data() } as Content);
+    });
+    
+    console.log(`Fetched ${contentList.length} content items for user ${userId}`);
+    return contentList;
+  } catch (error) {
+    console.error("Error fetching user content: ", error);
+    throw new Error('Failed to fetch user content.');
+  }
+};
+
+/**
+ * Update a specific Content document in Firestore.
+ * @param {string} contentId - The ID of the content document to update.
+ * @param {Partial<Omit<Content, 'id' | 'userId' | 'createdAt'>} dataToUpdate - An object containing the fields to update.
+ * @returns {Promise<void>}
+ */
+export const updateCreatorContent = async (
+  contentId: string,
+  dataToUpdate: Partial<Omit<Content, 'id' | 'userId' | 'createdAt'>
+): Promise<void> => {
+  try {
+    const contentRef = doc(db, 'creatorContent', contentId);
+    
+    // Ensure updatedAt is always updated
+    const updateData = {
+      ...dataToUpdate,
+      updatedAt: serverTimestamp() as Timestamp,
+      // Convert date strings to Timestamps if present
+      ...(dataToUpdate.scheduledDate && { scheduledDate: Timestamp.fromDate(new Date(dataToUpdate.scheduledDate)) }),
+      ...(dataToUpdate.publishDate && { publishDate: Timestamp.fromDate(new Date(dataToUpdate.publishDate)) })
+    };
+
+    // Remove undefined fields if necessary, although Firestore handles them
+    Object.keys(updateData).forEach(key => updateData[key as keyof typeof updateData] === undefined && delete updateData[key as keyof typeof updateData]);
+
+    await updateDoc(contentRef, updateData);
+    console.log(`Content document ${contentId} updated successfully.`);
+    
+  } catch (error) {
+    console.error(`Error updating content document ${contentId}: `, error);
+    throw new Error('Failed to update content metadata.');
+  }
+};
+
+/**
+ * Get a single Content document by its ID from the 'creatorContent' collection.
+ * @param {string} contentId - The ID of the content document to fetch.
+ * @returns {Promise<Content | null>} The content document or null if not found.
+ */
+export const getCreatorContentById = async (contentId: string): Promise<Content | null> => {
+  try {
+    const contentRef = doc(db, 'creatorContent', contentId);
+    const docSnap = await getDoc(contentRef);
+    
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as Content;
+    }
+    
+    console.log(`No content found with ID: ${contentId}`);
+    return null;
+  } catch (error) {
+    console.error(`Error fetching content document ${contentId}: `, error);
+    throw new Error('Failed to fetch content data.');
+  }
+};
+
+/**
+ * Get all platform connections for a specific user.
+ * Assumes connections are stored in users/{userId}/platformConnections
+ * @param {string} userId - The ID of the user whose connections to fetch.
+ * @returns {Promise<PlatformConnection[]>} An array of platform connection documents.
+ */
+export const getUserPlatformConnections = async (userId: string): Promise<PlatformConnection[]> => {
+  try {
+    const connectionsCollection = collection(db, 'users', userId, 'platformConnections');
+    const q = query(connectionsCollection); // Add ordering if needed, e.g., orderBy('name')
+    
+    const querySnapshot = await getDocs(q);
+    
+    const connectionsList: PlatformConnection[] = [];
+    querySnapshot.forEach((doc) => {
+      // Assume doc.id is the platform id (e.g., 'youtube')
+      connectionsList.push({ id: doc.id, ...doc.data() } as PlatformConnection);
+    });
+    
+    console.log(`Fetched ${connectionsList.length} platform connections for user ${userId}`);
+    return connectionsList;
+  } catch (error) {
+    console.error(`Error fetching platform connections for user ${userId}: `, error);
+    // Return empty array or rethrow depending on desired behavior
+    return []; // Return empty list on error for now
+    // throw new Error('Failed to fetch platform connections.');
   }
 }; 

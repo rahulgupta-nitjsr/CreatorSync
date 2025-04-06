@@ -54,13 +54,12 @@ export interface IUpdateProfileData {
  * @param {ISignUpData} data - User signup data
  * @returns {Promise<UserCredential>} Firebase user credential
  */
-export const signUp = async (data: ISignUpData): Promise<UserCredential> => {
+export const signUp = async (email: string, password: string, displayName: string): Promise<UserCredential> => {
   try {
-    const { email, password, displayName } = data;
-    
-    // Create user in Firebase Auth
+    // Remove temporary console log
+    // console.log(`[signUp Service] Calling createUser with:`, { email, password }); 
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const { user } = userCredential;
+    const user = userCredential.user;
     
     // Update profile with display name
     await updateProfile(user, { displayName });

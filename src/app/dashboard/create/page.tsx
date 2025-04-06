@@ -9,6 +9,14 @@ import { Input } from '@/components/common/Input';
 import { Card } from '@/components/common/Card';
 import { getUserPlatforms } from '@/firebase/platforms';
 import { createContent } from '@/firebase/content';
+import Link from 'next/link';
+import CreateContentForm from '@/components/content/CreateContentForm';
+import { uploadContentFile } from '@/services/storage.service';
+import { createCreatorContent } from '@/services/firestore.service';
+
+// Assume Toast component exists for notifications
+// import { toast } from 'react-hot-toast';
+const toast = { success: console.log, error: console.error }; // Placeholder
 
 interface PlatformToggle {
   id: string;
@@ -17,16 +25,27 @@ interface PlatformToggle {
   enabled: boolean;
 }
 
+interface FormData {
+  title: string;
+  description: string;
+  file: File;
+  platforms: string[];
+  scheduledDate: string | null;
+}
+
 export default function CreateContentPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [scheduledDate, setScheduledDate] = useState('');
   const [platforms, setPlatforms] = useState<PlatformToggle[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingState, setLoadingState] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null); // State for progress
   
   useEffect(() => {
     const fetchPlatforms = async () => {
@@ -51,6 +70,12 @@ export default function CreateContentPage() {
     
     fetchPlatforms();
   }, [user]);
+  
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
   
   const getPlatformName = (platformId: string): string => {
     const platformNames: {[key: string]: string} = {
@@ -86,152 +111,91 @@ export default function CreateContentPage() {
     );
   };
   
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!user) return;
-    
-    const enabledPlatforms = platforms
-      .filter(platform => platform.enabled)
-      .map(platform => platform.id);
-    
-    if (enabledPlatforms.length === 0) {
-      setError('Please select at least one platform');
+  const handleFormSubmit = async (formData: FormData) => {
+    if (!user || !formData.file) {
+      setSubmitError('Authentication error or missing file.');
       return;
     }
     
-    setLoading(true);
-    setError(null);
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setUploadProgress(0); // Reset progress
     
     try {
-      const contentData = {
-        title,
-        description,
-        scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
-        platforms: enabledPlatforms
+      console.log('Uploading file...');
+      const mediaUrl = await uploadContentFile(
+          formData.file, 
+          user.uid, 
+          (snapshot) => { // Progress callback
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setUploadProgress(progress);
+              console.log('Upload is ' + progress + '% done');
+          }
+      );
+      console.log('File uploaded, URL:', mediaUrl);
+      setUploadProgress(null); // Clear progress after upload
+
+      console.log('Saving content metadata...');
+      const mediaType = formData.file.type.startsWith('video/') ? 'video' : 'image';
+      const contentDataForFirestore = {
+        title: formData.title,
+        description: formData.description,
+        mediaUrl: mediaUrl,
+        mediaType: mediaType,
+        platforms: formData.platforms,
+        scheduledDate: formData.scheduledDate,
       };
       
-      await createContent(user.uid, contentData);
+      await createCreatorContent(user.uid, contentDataForFirestore);
+      console.log('Content metadata saved.');
+
+      toast.success('Content created successfully!'); // Success notification
+      router.push('/dashboard');
       
-      // Redirect to content list
-      router.push('/dashboard/content');
-    } catch (err: any) {
-      setError(err.message || 'Failed to create content');
-      setLoading(false);
+    } catch (error: any) {
+      console.error('Failed to create content:', error);
+      const errorMessage = error.message || 'Failed to create content. Please try again.';
+      setSubmitError(errorMessage);
+      toast.error(`Error: ${errorMessage}`); // Error notification
+      setIsSubmitting(false);
+      setUploadProgress(null); // Clear progress on error
     }
   };
   
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return null;
+  }
+
   return (
     <AuthGuard>
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">Create New Content</h1>
-          
-          <Card>
-            <form onSubmit={handleSubmit} className="p-6">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6" role="alert">
-                  <span className="block sm:inline">{error}</span>
-                </div>
-              )}
-              
-              <div className="space-y-6">
-                <div>
-                  <Input
-                    id="title"
-                    label="Content Title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    required
-                    fullWidth
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    rows={4}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <Input
-                    id="scheduledDate"
-                    label="Schedule Date and Time (optional)"
-                    type="datetime-local"
-                    value={scheduledDate}
-                    onChange={(e) => setScheduledDate(e.target.value)}
-                    fullWidth
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Platforms
-                  </label>
-                  
-                  {platforms.length === 0 ? (
-                    <div className="text-gray-500 italic mb-4">
-                      No platforms connected. Please connect platforms in your account settings.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {platforms.map((platform) => (
-                        <div key={platform.id} 
-                          className={`flex items-center p-3 border rounded cursor-pointer ${
-                            platform.enabled ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                          }`}
-                          onClick={() => handleTogglePlatform(platform.id)}
-                        >
-                          <div className="flex items-center flex-1">
-                            <div className="w-8 h-8 mr-3 flex items-center justify-center text-gray-500">
-                              <i className={platform.icon}></i>
-                            </div>
-                            <span>{platform.name}</span>
-                          </div>
-                          
-                          <div className="flex items-center">
-                            <input
-                              type="checkbox"
-                              className="h-5 w-5 text-blue-600 border-gray-300 rounded"
-                              checked={platform.enabled}
-                              onChange={() => handleTogglePlatform(platform.id)}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex justify-end space-x-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.push('/dashboard')}
-                  >
-                    Cancel
-                  </Button>
-                  
-                  <Button
-                    type="submit"
-                    isLoading={loading}
-                    disabled={platforms.length === 0}
-                  >
-                    {scheduledDate ? 'Schedule Content' : 'Create Content'}
-                  </Button>
-                </div>
-              </div>
-            </form>
-          </Card>
+      <div className="container mx-auto p-4">
+        <div className="mb-6">
+          <Link href="/dashboard" className="text-blue-600 hover:underline">
+            &larr; Back to Dashboard
+          </Link>
         </div>
+        <h1 className="text-2xl font-bold mb-4">Create New Content</h1>
+        
+        {submitError && (
+          <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <span className="block sm:inline">{submitError}</span>
+          </div>
+        )}
+        
+        <CreateContentForm 
+          onSubmit={handleFormSubmit} 
+          userId={user.uid} 
+          isSubmitting={isSubmitting} 
+          uploadProgress={uploadProgress} // Pass progress down
+        />
       </div>
     </AuthGuard>
   );

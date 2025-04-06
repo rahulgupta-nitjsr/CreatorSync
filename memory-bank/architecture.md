@@ -4,188 +4,133 @@
 
 This document provides a comprehensive overview of the CreatorSync application architecture, detailing the structure of the codebase, the purpose of each major file and directory, and the relationships between different components. This serves as a reference for developers working on the project.
 
-## Project Structure
+## Project Structure (Next.js App Router)
 
-The CreatorSync application follows a feature-based structure with clean separation of concerns. Here's an overview of the top-level organization:
+CreatorSync uses Next.js with the App Router, promoting a clear separation of concerns and feature-based organization.
 
 ```
 creatorSync/
-├── src/                   # Source code
-│   ├── app/               # Next.js application code
+├── src/
+│   ├── app/               # Next.js App Router: Layouts, Pages, Route Groups
+│   │   ├── layout.tsx     # Root layout (Navbar, Footer, Providers)
+│   │   ├── page.tsx       # Homepage (Currently basic)
+│   │   ├── (auth)/        # Authentication route group
+│   │   │   ├── layout.tsx # Layout specific to auth pages
+│   │   │   ├── login/
+│   │   │   │   └── page.tsx # Login page component
+│   │   │   ├── register/
+│   │   │   │   └── page.tsx # Register page component
+│   │   │   └── forgot-password/ # (Structure exists, page not fully implemented)
+│   │   │       └── page.tsx
+│   │   └── dashboard/     # Authenticated user area
+│   │       ├── page.tsx   # Main dashboard page (displays content list)
+│   │       ├── create/
+│   │       │   └── page.tsx # Create new content page
+│   │       ├── edit/
+│   │       │   └── [id]/
+│   │       │       └── page.tsx # Edit content page (dynamic route)
+│   │       └── settings/
+│   │           └── platforms/
+│   │               └── page.tsx # View platform connections page
 │   ├── components/        # React components
-│   ├── hooks/             # Custom React hooks
-│   ├── services/          # Business logic and external services
-│   ├── utils/             # Utility functions
-│   ├── types/             # TypeScript type definitions
-│   ├── styles/            # Global styles
-│   └── firebase/          # Firebase-specific code
-├── tests/                 # Test files
+│   │   ├── common/        # Shared UI components (Button, Card, Input, FormErrorMessage)
+│   │   ├── layout/        # Layout structure components (Navbar, Footer)
+│   │   ├── providers/     # Context provider wrappers (AppProviders)
+│   │   ├── auth/          # Authentication specific components (if any needed later)
+│   │   └── content/       # Content related components (ContentList, CreateContentForm, EditContentForm)
+│   ├── contexts/          # React Context definitions and providers (AuthContext, NotificationsContext)
+│   ├── hooks/             # Custom React hooks (useAuth defined in AuthContext)
+│   ├── services/          # Business logic & external services (auth, firestore, storage, notifications)
+│   ├── models/            # TypeScript interfaces/types (Content, PlatformConnection, UserProfile etc.)
+│   ├── utils/             # Utility functions (validation, errorHandling)
+│   └── firebase/          # Firebase config (config.ts)
+├── __tests__/             # Test files (Jest/RTL) - Mirroring src structure (Currently contains tests for services, utils, some components)
+├── __mocks__/             # Manual mocks for Jest
 ├── public/                # Static assets
 ├── .cursor/               # Cursor AI configuration
-│   └── rules/             # Cursor rules for development
-├── firebase/              # Firebase configuration
-│   ├── functions/         # Cloud Functions
-│   ├── firestore.rules    # Firestore security rules
-│   ├── storage.rules      # Storage security rules
-│   └── firebase.json      # Firebase configuration
-└── memory-bank/           # Project documentation
+├── firebase.json          # Firebase CLI config (hosting, functions, emulators)
+├── firestore.rules        # Firestore security rules
+├── storage.rules          # Storage security rules
+├── firestore.indexes.json # Firestore index definitions (if needed)
+├── memory-bank/           # Project documentation (including this file)
+├── node_modules/          # Project dependencies
+├── .env.local             # Environment variables (Firebase keys etc.)
+├── .gitignore             # Git ignore config
+├── jest.config.js         # Jest test runner config
+├── jest.setup.js          # Jest setup (global mocks)
+├── next.config.js         # Next.js config (if needed beyond default)
+├── package.json           # Project dependencies and scripts
+├── postcss.config.js      # PostCSS config (for Tailwind)
+├── tailwind.config.js     # Tailwind CSS config
+└── tsconfig.json          # TypeScript config
 ```
 
-## Key Files and Directories
+## Key Components and Logic
 
-### Application Core
+### Core Application (`src/app/`)
+- **Root Layout (`layout.tsx`):** Sets up HTML structure, includes global styles, fonts (Inter), Font Awesome, and wraps content with `AppProviders`. Renders `Navbar` and `Footer`.
+- **App Providers (`src/components/providers/AppProviders.tsx`):** Wraps the application with necessary context providers (`AuthProvider`, `NotificationsProvider`).
+- **Authentication (`(auth)/`):** Contains pages for login, registration, and forgot password, using a specific layout.
+- **Dashboard (`dashboard/`):** Main area for authenticated users. Includes pages for viewing content (`page.tsx`), creating content (`create/page.tsx`), editing content (`edit/[id]/page.tsx`), and viewing platform settings (`settings/platforms/page.tsx`).
 
-#### `src/app/`
-The core of the Next.js application using the App Router. Contains page components and routing structure.
+### Components (`src/components/`)
+- **Common:** Reusable UI elements like `Button`, `Card`, `Input`, `FormErrorMessage`.
+- **Layout:** `Navbar` (displays navigation, user info, notifications) and `Footer`.
+- **Content:**
+    - `ContentList`: Displays a list of content items with status badges, dates, platforms, and action buttons.
+    - `CreateContentForm`: Form for creating new content (title, desc, file, platforms, schedule).
+    - `EditContentForm`: Form for editing existing content metadata (pre-populated, no file change).
 
-```
-app/
-├── layout.tsx            # Root layout component
-├── page.tsx              # Homepage component
-├── (auth)/               # Authentication routes group
-│   ├── login/            # Login page
-│   ├── register/         # Registration page
-│   └── forgot-password/  # Password recovery
-├── dashboard/            # Dashboard routes
-├── content-studio/       # Content creation and management
-├── analytics/            # Analytics and reporting
-├── monetization/         # Revenue tracking and management
-├── community/            # Community engagement
-└── growth/               # Growth and strategy
-```
+### State Management (`src/contexts/`)
+- **`AuthContext`:** Manages user authentication state (`user`, `userProfile`, `platformConnections`, `loading`). Provides functions for `signIn`, `signUp`, `logOut`, profile updates, and fetching/refreshing user data and platform connections. Exports `useAuth` hook for easy access.
+- **`NotificationsContext`:** (Implementation details not fully explored in Phase 1 docs update) Likely manages fetching and displaying user notifications.
 
-#### `src/components/`
-Reusable React components organized by feature and functionality.
+### Services (`src/services/`)
+- **`auth.service.ts`:** Handles direct interaction with Firebase Authentication (creating users, signing in/out, password reset, profile updates via Firebase Auth SDK).
+- **`firestore.service.ts`:** Handles interactions with Firestore database.
+    - User profile CRUD (e.g., `getUserProfile`, `updateUserProfile`).
+    - Platform connections (`getUserPlatformConnections`).
+    - Content CRUD (`createCreatorContent`, `getUserContent`, `getCreatorContentById`, `updateCreatorContent`, `deleteContent`).
+    - Notification management functions.
+- **`storage.service.ts`:** Handles interactions with Firebase Storage.
+    - Generic file upload (`uploadFile`).
+    - Content file upload (`uploadContentFile`) using unique paths.
+    - File deletion (`deleteFile`).
+    - Helper for getting path from URL (`getFilePathFromURL`).
+- **`notifications.service.ts`:** (Implementation details not fully explored in Phase 1 docs update) Likely handles creating, fetching, and marking notifications in Firestore.
 
-```
-components/
-├── common/               # Shared UI components
-│   ├── Button/
-│   ├── Input/
-│   ├── Card/
-│   └── ...
-├── layout/               # Layout components
-│   ├── Sidebar/
-│   ├── Header/
-│   └── ...
-├── dashboard/            # Dashboard-specific components
-├── content-studio/       # Content Studio components
-├── analytics/            # Analytics components
-├── monetization/         # Monetization components
-├── community/            # Community components
-└── growth/               # Growth components
-```
+### Models (`src/models/`)
+- **`Content.ts`:** Defines the structure for content documents stored in Firestore (`creatorContent` collection).
+- **`PlatformConnection.ts`:** Defines the structure for user platform connection data stored in Firestore (`users/{userId}/platformConnections` subcollection).
+- (Other models like `UserProfile`, `Notification` likely exist or are needed).
 
-#### `src/hooks/`
-Custom React hooks for shared logic across components.
+### Utilities (`src/utils/`)
+- **`validation.ts`:** Contains functions for validating various inputs (email, password, name, required fields, etc.).
+- **`errorHandling.ts`:** Provides functions to handle and format errors, especially Firebase errors, into a consistent `AppError` structure.
 
-```
-hooks/
-├── useAuth.ts            # Authentication hook
-├── useFirestore.ts       # Firestore data hook
-├── usePlatformData.ts    # Social platform data hook
-├── useLocalStorage.ts    # Local storage management
-└── ...
-```
+### Firebase (`src/firebase/` & root `firebase/`)
+- **`config.ts`:** Initializes Firebase app using environment variables.
+- **Root `firebase/` directory:** Contains CLI config (`firebase.json`), security rules (`firestore.rules`, `storage.rules`), and potentially index definitions.
 
-### Firebase Integration
+### Testing (`__tests__/`)
+- Contains unit and integration tests using Jest and React Testing Library.
+- Mirrors `src` structure.
+- Includes tests for services (mocking Firebase), utilities, and some common components and pages.
+- Setup (`jest.setup.js`) includes global mocks (e.g., for `next/navigation`, Firebase SDK).
+- **Current Status:** Testing was paused to focus on Phase 1 feature completion. Many tests exist but some (like `useAuth.test.tsx`) were failing due to complex mocking issues. Testing needs to be revisited comprehensively.
 
-#### `src/firebase/`
-Firebase service configuration and utility functions.
+## Architectural Patterns & Data Flow
 
-```
-firebase/
-├── config.ts             # Firebase initialization
-├── auth.ts               # Authentication utilities
-├── firestore.ts          # Firestore utilities
-├── storage.ts            # Storage utilities
-├── functions.ts          # Cloud Functions utilities
-└── analytics.ts          # Firebase Analytics utilities
-```
-
-#### `firebase/functions/`
-Cloud Functions implementation for backend logic.
-
-```
-functions/
-├── src/
-│   ├── index.ts          # Functions entry point
-│   ├── auth/             # Authentication functions
-│   ├── content/          # Content management functions
-│   ├── analytics/        # Analytics processing
-│   ├── monetization/     # Payment and revenue functions
-│   ├── social/           # Social media API integrations
-│   └── utils/            # Shared utilities
-├── package.json
-└── tsconfig.json
-```
-
-### Business Logic
-
-#### `src/services/`
-Services that handle business logic and external API integration.
-
-```
-services/
-├── api.ts                # API client configuration
-├── platformService.ts    # Social platform API handling
-├── analyticsService.ts   # Analytics data processing
-├── contentService.ts     # Content management logic
-├── monetizationService.ts # Revenue tracking logic
-└── notificationService.ts # Notification management
-```
-
-### Testing
-
-#### `__tests__/`
-Test files organized to mirror the source code structure.
-
-```
-__tests__/
-├── components/           # Component tests
-│   ├── Button.test.tsx   # Button component tests
-│   ├── Card.test.tsx     # Card component tests
-│   └── ...               # Other component tests
-├── pages/                # Page tests
-│   ├── HomePage.test.tsx # Home page tests
-│   └── ...               # Other page tests
-├── hooks/                # Hook tests
-│   ├── useAuth.test.tsx  # Auth hook tests
-│   └── ...               # Other hook tests
-├── firebase/             # Firebase-specific tests
-│   ├── auth.test.ts      # Authentication functions tests
-│   └── ...               # Other Firebase service tests
-└── jest.setup.js         # Jest setup and global mocks
-```
-
-## Test Implementation Approach
-
-### UI Component Testing
-
-1. Component tests use React Testing Library
-2. Test rendering, props, user interactions, and state changes
-3. Mock dependencies to isolate components
-4. Focus on testing component behavior rather than implementation details
-
-### Firebase Service Testing
-
-1. Firebase services are mocked in tests to avoid actual Firebase calls
-2. Auth functions testing mocks Firebase authentication operations
-3. Firestore testing focuses on data manipulation logic
-4. Integration tests may use Firebase emulators (future implementation)
-
-### Hook Testing
-
-1. Custom hooks are tested using `@testing-library/react-hooks`
-2. Firebase dependencies are mocked in hook tests
-3. Tests cover all major state and lifecycle cases
-
-### Testing Configuration
-
-1. Jest configuration in `jest.config.js`
-2. Setup file in `jest.setup.js` with global mocks and polyfills
-3. Type augmentation for Jest matchers with `@testing-library/jest-dom`
-4. Module path mapping to match Next.js configuration
+1.  **Component Structure:** Functional components with hooks (App Router conventions).
+2.  **State Management:** Combination of:
+    - React Context (`AuthContext`, `NotificationsContext`) for global state (auth status, profile, connections, notifications).
+    - Local component state (`useState`) for UI state, form data, loading/error flags within specific pages/components.
+3.  **Data Fetching:** Primarily driven by:
+    - `AuthContext` fetching user profile and platform connections on auth state change.
+    - Page components (`DashboardPage`, `EditContentPage`) fetching necessary data via `useEffect` and service functions.
+4.  **Service Layer:** Abstraction layer (`src/services/`) encapsulates Firebase interactions, promoting separation of concerns and testability.
+5.  **Error Handling:** Centralized utility (`errorHandling.ts`) and local `try/catch` blocks in service calls and component submit handlers.
+6.  **Routing:** Managed by Next.js App Router file-based routing, including route groups `(auth)` and dynamic routes `[id]`.
 
 ## Documentation (memory-bank)
 
