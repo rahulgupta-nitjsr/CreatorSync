@@ -9,6 +9,10 @@ import { Content } from '@/models/content'; // Use the Content model
 import { getUserContent, deleteContent, updateCreatorContent } from '@/services/firestore.service'; // Import service functions
 import { deleteFile, getFilePathFromURL } from '@/services/storage.service'; // Import storage delete
 import { Timestamp } from 'firebase/firestore'; // Import Timestamp
+import Link from 'next/link';
+import toast from 'react-hot-toast';
+import { Loader2, DollarSign, Eye, ThumbsUp, MessageSquare } from 'lucide-react'; // Import a spinner icon and other icons
+import { StatCard } from '@/components/common/StatCard'; // Import the memoized StatCard
 
 // Define the ContentItem type matching ContentListProps
 interface ContentItem {
@@ -22,7 +26,7 @@ interface ContentItem {
 }
 
 export default function DashboardPage() {
-  const { user, userProfile, loading: authLoading, logOut } = useAuth(); // Renamed loading
+  const { user, userProfile, loading: authLoading, logOut, getIdToken } = useAuth(); // Renamed loading
   const router = useRouter();
   const [contentItems, setContentItems] = useState<Content[]>([]); // Use Content[] type
   const [contentLoading, setContentLoading] = useState(true); 
@@ -60,6 +64,7 @@ export default function DashboardPage() {
         } catch (error: any) {
           console.error('Failed to fetch content:', error);
           setContentError(error.message || 'Failed to load your content.');
+          toast.error(error.message || 'Failed to load your content.');
         } finally {
           setContentLoading(false);
         }
@@ -87,84 +92,106 @@ export default function DashboardPage() {
     router.push(`/dashboard/edit/${id}`); // Navigate to an edit page (needs creation)
   };
 
-  const handleDelete = async (id: string) => {
-    if (!id || !confirm('Are you sure you want to delete this content?')) return;
+  const handleDeleteContent = async (contentId: string) => {
+    if (!user || !contentId) return;
+    if (!confirm(`Are you sure you want to delete this content? This action cannot be undone.`)) {
+        return;
+    }
     
-    console.log('Deleting content:', id);
-    // Find the item to get its mediaUrl for storage deletion
-    const itemToDelete = contentItems.find(item => item.id === id);
-    
+    const toastId = toast.loading('Deleting content...');
     try {
-      // 1. Delete Firestore document
-      await deleteContent(id); 
-      console.log('Firestore document deleted.');
+        const token = await getIdToken();
+        if (!token) throw new Error('Authentication token not available.');
 
-      // 2. Delete associated media file from Storage (if URL exists)
-      if (itemToDelete?.mediaUrl) {
-          const filePath = getFilePathFromURL(itemToDelete.mediaUrl);
-          if (filePath) {
-              console.log('Deleting storage file:', filePath);
-              await deleteFile(filePath);
-              console.log('Storage file deleted.');
-          } else {
-              console.warn('Could not extract file path from URL:', itemToDelete.mediaUrl);
+        // Call the backend DELETE endpoint
+        const response = await fetch(`/api/content/${contentId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({})); // Try parsing JSON error
+            throw new Error(errorData.error || `Failed to delete content (Status: ${response.status})`);
+        }
+        
+        const result = await response.json(); // Get success message
+        toast.success(result.message || 'Content deleted successfully', { id: toastId });
+        
+        // Update UI optimistically or refetch
+        setContentItems(prev => prev.filter(c => c.id !== contentId)); 
+        // fetchContent(); // Optionally refetch instead of optimistic update
+
+    } catch (err: any) {
+        console.error('Failed to delete content:', err);
+        toast.error(`Error deleting content: ${err.message || 'Unknown error'}`, { id: toastId });
+    }
+  };
+  
+  // Refactor handlePublishContent to navigate to Edit page for publishing action
+  const handlePublishContent = (contentId: string) => {
+      router.push(`/dashboard/edit/${contentId}`); 
+      // Optional: Add query param? router.push(`/dashboard/edit/${contentId}?action=publish`);
+      // Toast info removed as action is navigation now
+  };
+
+  // Handle content liking
+  const handleLikeContent = async (contentId: string) => {
+      // Optimistic UI Update
+      setContentItems(prevItems => 
+          prevItems.map(item => 
+              item.id === contentId 
+                  ? { ...item, likes: (item.likes || 0) + 1 } 
+                  : item
+          )
+      );
+
+      try {
+          const response = await fetch(`/api/content/${contentId}/like`, {
+              method: 'POST',
+          });
+
+          if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              throw new Error(errorData.error || `Failed to like content (Status: ${response.status})`);
           }
-      } else {
-          console.log('No media URL found for this item, skipping storage deletion.');
+          // No success toast needed for a simple like, usually
+          console.log(`Successfully liked content ${contentId}`);
+
+      } catch (err: any) {
+          console.error(`Failed to like content ${contentId}:`, err);
+          toast.error(`Failed to like content: ${err.message}`);
+          // Revert optimistic update on error
+          setContentItems(prevItems => 
+              prevItems.map(item => 
+                  item.id === contentId 
+                      ? { ...item, likes: Math.max(0, (item.likes || 1) - 1) } // Decrement safely
+                      : item
+              )
+          );
       }
-
-      // 3. Update local state
-      setContentItems(prevItems => prevItems.filter(item => item.id !== id));
-      console.log('Content deleted successfully from UI.');
-      
-    } catch (error: any) { 
-      console.error('Failed to delete content:', error);
-      alert(`Error deleting content: ${error.message}`);
-      // Note: If deletion fails, UI might be out of sync. Consider refetching.
-    }
   };
 
-  const handlePublish = async (id: string) => {
-    if (!id) return;
-    console.log('Publishing content:', id);
-    
-    // Optimistic UI update (optional, makes UI feel faster)
-    const originalItems = [...contentItems];
-    setContentItems(prevItems => prevItems.map(item => 
-        item.id === id ? { ...item, status: 'publishing' } : item // Show temporary publishing state
-      ));
-
-    try {
-      // Data to update in Firestore
-      const updateData = {
-        status: 'published' as const, // Use 'as const' for type safety
-        scheduledDate: null,          // Clear scheduled date
-        publishDate: Timestamp.now() // Set publish date to now
-      };
-
-      // Call the service function to update Firestore
-      await updateCreatorContent(id, updateData);
-      console.log('Content published successfully in Firestore.');
-
-      // Update local state again with final data (including publishDate)
-      // Note: Firestore Timestamps need handling for display or further use
-      setContentItems(prevItems => prevItems.map(item => 
-        item.id === id ? { ...item, ...updateData } : item
-      ));
-      
-    } catch (error: any) { 
-      console.error('Failed to publish content:', error);
-      alert(`Error publishing content: ${error.message}`);
-      // Revert optimistic UI update on error
-      setContentItems(originalItems);
-    }
-  };
+  // Calculate aggregate stats (client-side for now)
+  const totalViews = contentItems.reduce((sum, item) => sum + (item.views || 0), 0);
+  const totalLikes = contentItems.reduce((sum, item) => sum + (item.likes || 0), 0);
+  const totalComments = contentItems.reduce((sum, item) => sum + (item.commentsCount || 0), 0);
+  // Placeholder for earnings aggregation
+  const totalEarnings = contentItems.reduce((sum, item) => {
+      let itemTotal = 0;
+      if (item.estimatedEarnings) {
+          itemTotal = Object.values(item.estimatedEarnings).reduce((s, e) => s + e, 0);
+      }
+      return sum + itemTotal;
+  }, 0).toFixed(2);
 
   // Show loading state or placeholder if auth loading or no user yet
   if (authLoading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        Loading...
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500 mb-4" />
+        <p className="text-gray-500">Loading dashboard...</p>
       </div>
     );
   }
@@ -175,13 +202,14 @@ export default function DashboardPage() {
       <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <div>
-             <Button 
-               variant="primary" 
-               className="mr-2"
-               onClick={() => router.push('/dashboard/create')}
-             >
-               Create New Content
-             </Button>
+             <Link href="/dashboard/create" passHref>
+               <Button 
+                 variant="primary" 
+                 className="mr-2"
+               >
+                 Create New Content
+               </Button>
+             </Link>
              <Button onClick={handleLogout} variant="outline">
                Log Out
              </Button>
@@ -190,11 +218,22 @@ export default function DashboardPage() {
 
       <p className="mb-6">Welcome, {userProfile?.displayName || user.email}!</p>
       
+      {/* Stats Overview Section */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+         <StatCard title="Total Views" value={contentLoading ? '-' : totalViews} icon={Eye} />
+         <StatCard title="Total Likes" value={contentLoading ? '-' : totalLikes} icon={ThumbsUp} />
+         <StatCard title="Total Comments" value={contentLoading ? '-' : totalComments} icon={MessageSquare} />
+         <StatCard title="Est. Earnings" value={contentLoading ? '-' : `$${totalEarnings}`} icon={DollarSign} />
+      </div>
+
       <h2 className="text-xl font-semibold mb-4">Your Content</h2>
 
       {/* Content Loading/Error/List Section */}
       {contentLoading ? (
-        <div className="text-center p-6 bg-gray-100 rounded-lg">Loading content...</div>
+        <div className="flex flex-col items-center justify-center p-10">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-500 mb-4" />
+          <p className="text-gray-500">Loading content...</p>
+        </div>
       ) : contentError ? (
         <div className="text-center p-6 bg-red-100 rounded-lg text-red-700" role="alert">
           Error loading content: {contentError}
@@ -208,8 +247,9 @@ export default function DashboardPage() {
             publishDate: item.publishDate?.toDate().toLocaleTimeString() || null
           }))} 
           onEdit={handleEdit}
-          onDelete={handleDelete}
-          onPublish={handlePublish}
+          onDelete={handleDeleteContent}
+          onPublish={handlePublishContent}
+          onLike={handleLikeContent}
         />
       )}
       

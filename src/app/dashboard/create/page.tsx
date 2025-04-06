@@ -13,10 +13,7 @@ import Link from 'next/link';
 import CreateContentForm from '@/components/content/CreateContentForm';
 import { uploadContentFile } from '@/services/storage.service';
 import { createCreatorContent } from '@/services/firestore.service';
-
-// Assume Toast component exists for notifications
-// import { toast } from 'react-hot-toast';
-const toast = { success: console.log, error: console.error }; // Placeholder
+import toast from 'react-hot-toast';
 
 interface PlatformToggle {
   id: string;
@@ -34,7 +31,7 @@ interface FormData {
 }
 
 export default function CreateContentPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, platformConnections } = useAuth();
   const router = useRouter();
   
   const [title, setTitle] = useState('');
@@ -42,10 +39,8 @@ export default function CreateContentPage() {
   const [scheduledDate, setScheduledDate] = useState('');
   const [platforms, setPlatforms] = useState<PlatformToggle[]>([]);
   const [loadingState, setLoadingState] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null); // State for progress
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   
   useEffect(() => {
     const fetchPlatforms = async () => {
@@ -111,67 +106,66 @@ export default function CreateContentPage() {
     );
   };
   
-  const handleFormSubmit = async (formData: FormData) => {
-    if (!user || !formData.file) {
-      setSubmitError('Authentication error or missing file.');
+  const handleFormSubmit = async (formData: {
+    title: string;
+    description: string;
+    contentType: 'video' | 'image' | 'text';
+    mediaFile?: File;
+    tags?: string[];
+    scheduledDate?: string;
+  }) => {
+    if (!user) {
+      toast.error('You must be logged in to create content.');
       return;
     }
-    
-    setIsSubmitting(true);
-    setSubmitError(null);
-    setUploadProgress(0); // Reset progress
-    
-    try {
-      console.log('Uploading file...');
-      const mediaUrl = await uploadContentFile(
-          formData.file, 
-          user.uid, 
-          (snapshot) => { // Progress callback
-              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              setUploadProgress(progress);
-              console.log('Upload is ' + progress + '% done');
-          }
-      );
-      console.log('File uploaded, URL:', mediaUrl);
-      setUploadProgress(null); // Clear progress after upload
 
-      console.log('Saving content metadata...');
-      const mediaType = formData.file.type.startsWith('video/') ? 'video' : 'image';
-      const contentDataForFirestore = {
+    setIsSubmitting(true);
+    setUploadProgress(null);
+    const toastId = toast.loading('Starting content creation...');
+
+    try {
+      let mediaUrl = '';
+      if (formData.mediaFile) {
+        toast.loading('Uploading media file...', { id: toastId });
+        mediaUrl = await uploadContentFile(
+          formData.mediaFile, 
+          user.uid, 
+          (progress) => setUploadProgress(progress)
+        );
+        setUploadProgress(100);
+        toast.loading('Saving content details...', { id: toastId });
+      }
+
+      const contentData = {
         title: formData.title,
         description: formData.description,
-        mediaUrl: mediaUrl,
-        mediaType: mediaType,
-        platforms: formData.platforms,
-        scheduledDate: formData.scheduledDate,
+        contentType: formData.contentType,
+        mediaUrl: mediaUrl || null,
+        tags: formData.tags || [],
+        scheduledDate: formData.scheduledDate || null,
+        status: formData.scheduledDate ? 'scheduled' : 'draft',
+        userId: user.uid,
+        publishedPlatforms: {},
       };
-      
-      await createCreatorContent(user.uid, contentDataForFirestore);
-      console.log('Content metadata saved.');
 
-      toast.success('Content created successfully!'); // Success notification
-      router.push('/dashboard');
-      
-    } catch (error: any) {
-      console.error('Failed to create content:', error);
-      const errorMessage = error.message || 'Failed to create content. Please try again.';
-      setSubmitError(errorMessage);
-      toast.error(`Error: ${errorMessage}`); // Error notification
+      const newContentId = await createCreatorContent(user.uid, contentData as any);
+
+      toast.success('Content created successfully!', { id: toastId });
+      setTimeout(() => {
+          router.push('/dashboard');
+      }, 1000);
+
+    } catch (err: any) {
+      console.error('Content creation error:', err);
+      toast.error(`Failed to create content: ${err.message || 'Unknown error'}`, { id: toastId });
+    } finally {
       setIsSubmitting(false);
-      setUploadProgress(null); // Clear progress on error
+      setUploadProgress(null);
     }
   };
   
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        Loading...
-      </div>
-    );
-  }
-  
-  if (!user) {
-    return null;
+  if (authLoading || !user) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
   return (
@@ -184,17 +178,12 @@ export default function CreateContentPage() {
         </div>
         <h1 className="text-2xl font-bold mb-4">Create New Content</h1>
         
-        {submitError && (
-          <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-            <span className="block sm:inline">{submitError}</span>
-          </div>
-        )}
-        
         <CreateContentForm 
           onSubmit={handleFormSubmit} 
           userId={user.uid} 
           isSubmitting={isSubmitting} 
-          uploadProgress={uploadProgress} // Pass progress down
+          uploadProgress={uploadProgress}
+          connectedPlatforms={platformConnections || []}
         />
       </div>
     </AuthGuard>

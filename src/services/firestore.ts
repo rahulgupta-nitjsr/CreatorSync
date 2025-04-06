@@ -399,14 +399,13 @@ export const getUserContent = async (userId: string): Promise<Content[]> => {
 };
 
 /**
- * Update a specific Content document in Firestore.
- * @param {string} contentId - The ID of the content document to update.
- * @param {Partial<Omit<Content, 'id' | 'userId' | 'createdAt'>} dataToUpdate - An object containing the fields to update.
- * @returns {Promise<void>}
+ * Update existing creator content metadata in Firestore
+ * @param contentId The ID of the content document to update
+ * @param dataToUpdate An object containing the fields to update
  */
 export const updateCreatorContent = async (
   contentId: string,
-  dataToUpdate: Partial<Omit<Content, 'id' | 'userId' | 'createdAt'>
+  dataToUpdate: Partial<Omit<Content, 'id' | 'userId' | 'createdAt'>>
 ): Promise<void> => {
   try {
     const contentRef = doc(db, 'creatorContent', contentId);

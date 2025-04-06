@@ -1,14 +1,26 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { User } from 'firebase/auth';
-import { 
-  subscribeToAuthChanges, 
-  signIn, 
-  signUp, 
-  logOut, 
-  resetPassword,
-  getUserProfile,
-  updateUserProfile
-} from '@/services/auth';
+import {
+  User,
+  signOut as firebaseSignOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updateProfile as firebaseUpdateProfile,
+  getIdToken as firebaseGetIdToken,
+  getAuth, 
+  onAuthStateChanged, 
+  User as FirebaseUser, 
+  updateProfile as updateProfileService 
+} from 'firebase/auth';
+import { auth, db } from '@/firebase/config';
+import {
+  AuthServiceError,
+  handleAuthError,
+  // We might not need these service imports if logic is fully in context
+  // signIn as signInService,
+  // signUp as signUpService,
+  // updateUserProfile
+} from '@/services/auth'; // Assuming auth service for error handling primarily
 import { getUserPlatformConnections } from '@/services/firestore.service';
 import { PlatformConnection } from '@/models/platformConnection';
 

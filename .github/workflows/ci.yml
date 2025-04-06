@@ -1,4 +1,4 @@
-name: Node.js CI
+name: CreatorSync CI
 
 on:
   push:
@@ -7,25 +7,59 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
-
+  build-and-test:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [18.x] # Use Node.js 18.x LTS
+        node-version: [18.x, 20.x] # Test on multiple Node versions
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - name: Install Dependencies
-      run: npm ci
-    - name: Run Tests
+        cache: 'npm' # Enable caching for npm dependencies
+
+    - name: Install dependencies
+      run: npm ci # Use ci for faster, more reliable installs in CI
+
+    # Optional: Add build step if necessary (e.g., for production builds)
+    # - name: Build project
+    #   run: npm run build
+
+    - name: Run linters
+      run: npm run lint
+
+    - name: Run tests
       run: npm test
-    # Add build step if needed in the future: 
-    # - name: Build Project
-    #   run: npm run build --if-present 
+      env:
+        # Set dummy environment variables needed for tests/build if any
+        # Required for Firebase init during tests, even with mocks
+        NEXT_PUBLIC_FIREBASE_API_KEY: test_key
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: test_domain
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: test_project_id
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: test_bucket
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: test_sender_id
+        NEXT_PUBLIC_FIREBASE_APP_ID: test_app_id
+        # Add other necessary env vars here
+        NEXT_PUBLIC_BASE_URL: http://localhost:3000 # Needed for OAuth redirect URI construction
+        TIKTOK_CLIENT_ID: placeholder
+        TIKTOK_CLIENT_SECRET: placeholder
+        INSTAGRAM_CLIENT_ID: placeholder
+        INSTAGRAM_CLIENT_SECRET: placeholder
+        X_CLIENT_ID: placeholder
+        X_CLIENT_SECRET: placeholder
+        # Note: Firebase Admin SDK credentials should NOT be hardcoded here.
+        # Use GitHub Secrets for real credentials if needed for specific tests/deployments.
+
+    # Optional: Add step to upload test coverage reports (e.g., to Codecov)
+    # - name: Upload coverage reports to Codecov
+    #   uses: codecov/codecov-action@v4
+    #   with:
+    #       token: ${{ secrets.CODECOV_TOKEN }} # Store Codecov token in GitHub Secrets
+    #       files: ./coverage/lcov.info
+    #       fail_ci_if_error: true

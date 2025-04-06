@@ -1,43 +1,33 @@
-'use client';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google"; // Keep font if used by MainLayout
+import "./globals.css";
+// Remove client-side imports like Navbar, Footer, AppProviders, Toaster
+import { MainLayout } from "@/components/layout/MainLayout"; // Import the new client layout component
 
-import React from 'react';
-import './globals.css';
-import { Inter } from 'next/font/google';
-import AppProviders from '@/components/providers/AppProviders';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
+// Font instance can stay if MainLayout needs the className
+const inter = Inter({ subsets: ["latin"] }); 
 
-const inter = Inter({ subsets: ['latin'] });
+// Metadata export remains here in the Server Component
+export const metadata: Metadata = {
+  title: "CreatorSync - Manage Your Content",
+  description: "Sync your content across TikTok, Instagram Reels, and X.",
+};
 
-// Metadata is handled by Next.js automatically now
-
+/**
+ * RootLayout (Server Component)
+ * Sets up HTML structure and renders the client-side MainLayout.
+ */
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
-      <head>
-        {/* Add Font Awesome for icons */}
-        <link 
-          rel="stylesheet" 
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" 
-          integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" 
-          crossOrigin="anonymous" 
-          referrerPolicy="no-referrer" 
-        />
-      </head>
-      <body className={inter.className}>
-        <AppProviders>
-          <div className="flex flex-col min-h-screen">
-            <Navbar />
-            <main className="flex-grow">
-              {children}
-            </main>
-            <Footer />
-          </div>
-        </AppProviders>
+      {/* Remove className from body here if it's applied inside MainLayout */}
+      <body> 
+        {/* Render the MainLayout client component, passing children */}
+        <MainLayout>{children}</MainLayout>
       </body>
     </html>
   );

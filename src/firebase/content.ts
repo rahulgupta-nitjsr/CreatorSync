@@ -4,8 +4,12 @@ import { db } from './config';
 interface ContentData {
   title: string;
   description: string;
-  scheduledDate: string | null;
+  mediaUrl: string | null;
+  mediaType: 'video' | 'image' | 'text';
+  thumbnailUrl?: string | null;
+  tags: string[];
   platforms: string[];
+  scheduledDate: Timestamp | Date | null;
   status?: 'draft' | 'scheduled' | 'published' | 'failed';
   publishResults?: {
     [platformId: string]: {
@@ -32,51 +36,72 @@ interface Content extends ContentData {
  */
 export const createContent = async (userId: string, contentData: ContentData): Promise<string> => {
   try {
-    const contentCollection = collection(db, 'content');
+    const contentCollection = collection(db, 'users', userId, 'content');
     
     // Set initial status based on scheduled date
-    const status = contentData.scheduledDate ? 'scheduled' : 'draft';
+    let scheduleTimestamp: Timestamp | null = null;
+    if (contentData.scheduledDate) {
+        scheduleTimestamp = contentData.scheduledDate instanceof Date 
+            ? Timestamp.fromDate(contentData.scheduledDate) 
+            : contentData.scheduledDate; // Assume it's already a Timestamp
+    }
+
+    const status = scheduleTimestamp ? 'scheduled' : 'draft';
     
-    const docRef = await addDoc(contentCollection, {
+    const docData = {
       ...contentData,
+      scheduledDate: scheduleTimestamp,
       status,
       userId,
+      publishDate: null,
+      views: 0,
+      likes: 0,
+      commentsCount: 0,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
-    });
+    };
+
+    // Remove undefined fields before sending to Firestore
+    Object.keys(docData).forEach(key => docData[key as keyof typeof docData] === undefined && delete docData[key as keyof typeof docData]);
+    
+    const docRef = await addDoc(contentCollection, docData);
     
     return docRef.id;
   } catch (error) {
     console.error('Error creating content:', error);
-    throw error;
+    throw new Error('Failed to create content item.');
   }
 };
 
 /**
  * Get all content items for a user
  * @param userId User ID
- * @param filter Optional filter (all, draft, scheduled, published)
+ * @param filter Optional filter (all, draft, scheduled, published, failed)
  * @returns Array of content items
  */
 export const getUserContent = async (
   userId: string, 
-  filter: 'all' | 'draft' | 'scheduled' | 'published' = 'all'
+  filter: 'all' | 'draft' | 'scheduled' | 'published' | 'failed' = 'all'
 ): Promise<Content[]> => {
   try {
-    const contentCollection = collection(db, 'content');
-    let contentQuery;
+    const contentCollection = collection(db, 'users', userId, 'content');
     
-    if (filter === 'all') {
+    // Base constraints
+    const baseConstraints = [where('userId', '==', userId)];
+    
+    // Build the query dynamically
+    let contentQuery;
+    if (filter !== 'all') {
       contentQuery = query(
         contentCollection,
-        where('userId', '==', userId),
+        ...baseConstraints,
+        where('status', '==', filter),
         orderBy('createdAt', 'desc')
       );
     } else {
       contentQuery = query(
         contentCollection,
-        where('userId', '==', userId),
-        where('status', '==', filter),
+        ...baseConstraints,
         orderBy('createdAt', 'desc')
       );
     }
@@ -92,7 +117,7 @@ export const getUserContent = async (
     });
   } catch (error) {
     console.error('Error getting user content:', error);
-    throw error;
+    throw new Error('Failed to retrieve content.');
   }
 };
 
@@ -123,86 +148,80 @@ export const getContent = async (contentId: string): Promise<Content | null> => 
 
 /**
  * Update a content item
+ * @param userId User ID
  * @param contentId Content ID
- * @param contentData Updated content data
+ * @param updateData Updated content data
  */
-export const updateContent = async (contentId: string, contentData: Partial<ContentData>): Promise<void> => {
+export const updateContent = async (
+    userId: string, 
+    contentId: string, 
+    updateData: Partial<ContentData & { status?: Content['status'] }>
+): Promise<void> => {
   try {
-    const contentRef = doc(db, 'content', contentId);
+    const contentRef = doc(db, 'users', userId, 'content', contentId);
     
-    // If updating scheduledDate, update status accordingly
-    if ('scheduledDate' in contentData) {
-      if (contentData.scheduledDate) {
-        contentData.status = 'scheduled';
-      } else if (contentData.status === 'scheduled') {
-        contentData.status = 'draft';
+    // Prepare data for update, converting scheduledDate if present
+    const dataToUpdate: Partial<Content & { updatedAt: any }> = { ...updateData };
+
+    if (updateData.scheduledDate !== undefined) {
+      if (updateData.scheduledDate === null) {
+        dataToUpdate.scheduledDate = null;
+        if (!dataToUpdate.status) {
+            dataToUpdate.status = 'draft'; 
+        }
+      } else {
+         dataToUpdate.scheduledDate = updateData.scheduledDate instanceof Date 
+            ? Timestamp.fromDate(updateData.scheduledDate) 
+            : updateData.scheduledDate;
+         dataToUpdate.status = 'scheduled';
       }
+    } else {
+        delete dataToUpdate.scheduledDate;
     }
     
-    await updateDoc(contentRef, {
-      ...contentData,
-      updatedAt: serverTimestamp()
-    });
+    dataToUpdate.updatedAt = serverTimestamp();
+
+    // Remove undefined fields before sending to Firestore
+    Object.keys(dataToUpdate).forEach(key => dataToUpdate[key as keyof typeof dataToUpdate] === undefined && delete dataToUpdate[key as keyof typeof dataToUpdate]);
+
+    await updateDoc(contentRef, dataToUpdate);
+
   } catch (error) {
     console.error('Error updating content:', error);
-    throw error;
+    throw new Error('Failed to update content item.');
   }
 };
 
 /**
  * Delete a content item
+ * @param userId User ID
  * @param contentId Content ID
  */
-export const deleteContent = async (contentId: string): Promise<void> => {
+export const deleteContent = async (userId: string, contentId: string): Promise<void> => {
   try {
-    const contentRef = doc(db, 'content', contentId);
+    const contentRef = doc(db, 'users', userId, 'content', contentId);
     await deleteDoc(contentRef);
   } catch (error) {
     console.error('Error deleting content:', error);
-    throw error;
+    throw new Error('Failed to delete content item.');
   }
 };
 
 /**
  * Publish content to selected platforms
+ * @param userId User ID
  * @param contentId Content ID
- * @param platforms Platform IDs to publish to (if empty, publish to all platforms in content)
  */
-export const publishContent = async (
-  contentId: string, 
-  platforms: string[] = []
-): Promise<void> => {
+export const publishContent = async (userId: string, contentId: string): Promise<void> => {
   try {
-    const contentRef = doc(db, 'content', contentId);
-    const contentDoc = await getDoc(contentRef);
-    
-    if (!contentDoc.exists()) {
-      throw new Error('Content not found');
-    }
-    
-    const content = contentDoc.data() as ContentData;
-    const platformsToPublish = platforms.length > 0 ? platforms : content.platforms;
-    
-    // In a real app, this would call platform APIs to publish content
-    // For demo purposes, we'll simulate successful publishing
-    const publishResults: ContentData['publishResults'] = {};
-    
-    platformsToPublish.forEach(platformId => {
-      publishResults[platformId] = {
-        status: 'success',
-        message: 'Content published successfully',
-        url: `https://${platformId}.com/post/123456`,
-        publishedAt: serverTimestamp()
-      };
-    });
-    
+    const contentRef = doc(db, 'users', userId, 'content', contentId);
     await updateDoc(contentRef, {
       status: 'published',
-      publishResults,
+      publishDate: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
   } catch (error) {
-    console.error('Error publishing content:', error);
-    throw error;
+    console.error('Error marking content as published:', error);
+    throw new Error('Failed to update content status to published.');
   }
 }; 

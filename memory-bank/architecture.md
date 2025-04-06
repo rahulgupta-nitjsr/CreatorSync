@@ -12,38 +12,55 @@ CreatorSync uses Next.js with the App Router, promoting a clear separation of co
 creatorSync/
 ├── src/
 │   ├── app/               # Next.js App Router: Layouts, Pages, Route Groups
-│   │   ├── layout.tsx     # Root layout (Navbar, Footer, Providers)
+│   │   ├── layout.tsx     # Root layout (Server Component - HTML structure)
 │   │   ├── page.tsx       # Homepage (Currently basic)
+│   │   ├── api/           # API Route Handlers
+│   │   │   ├── connect/
+│   │   │   │   ├── [platform]/
+│   │   │   │   │   ├── callback/ # OAuth callback handler
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts    # Initiate OAuth flow
+│   │   │   ├── disconnect/
+│   │   │   │   └── [platform]/
+│   │   │   │       └── route.ts    # Disconnect platform
+│   │   │   ├── publish/
+│   │   │   │   └── [contentId]/
+│   │   │   │       └── route.ts    # Trigger content publishing
+│   │   │   └── content/
+│   │   │       └── [contentId]/
+│   │   │           ├── like/       # Handle liking content
+│   │   │           │   └── route.ts
+│   │   │           └── route.ts    # Handle content deletion (DELETE)
 │   │   ├── (auth)/        # Authentication route group
-│   │   │   ├── layout.tsx # Layout specific to auth pages
+│   │   │   ├── layout.tsx 
 │   │   │   ├── login/
-│   │   │   │   └── page.tsx # Login page component
+│   │   │   │   └── page.tsx
 │   │   │   ├── register/
-│   │   │   │   └── page.tsx # Register page component
-│   │   │   └── forgot-password/ # (Structure exists, page not fully implemented)
+│   │   │   │   └── page.tsx
+│   │   │   └── forgot-password/
 │   │   │       └── page.tsx
 │   │   └── dashboard/     # Authenticated user area
-│   │       ├── page.tsx   # Main dashboard page (displays content list)
+│   │       ├── page.tsx   # Main dashboard page (content list, stats)
 │   │       ├── create/
-│   │       │   └── page.tsx # Create new content page
+│   │       │   └── page.tsx
 │   │       ├── edit/
 │   │       │   └── [id]/
-│   │       │       └── page.tsx # Edit content page (dynamic route)
+│   │       │       └── page.tsx
 │   │       └── settings/
 │   │           └── platforms/
-│   │               └── page.tsx # View platform connections page
+│   │               └── page.tsx
 │   ├── components/        # React components
-│   │   ├── common/        # Shared UI components (Button, Card, Input, FormErrorMessage)
-│   │   ├── layout/        # Layout structure components (Navbar, Footer)
+│   │   ├── common/        # Shared UI components (Button, Card, Input, etc.)
+│   │   ├── layout/        # Layout components (Navbar, Footer, MainLayout)
 │   │   ├── providers/     # Context provider wrappers (AppProviders)
-│   │   ├── auth/          # Authentication specific components (if any needed later)
-│   │   └── content/       # Content related components (ContentList, CreateContentForm, EditContentForm)
-│   ├── contexts/          # React Context definitions and providers (AuthContext, NotificationsContext)
-│   ├── hooks/             # Custom React hooks (useAuth defined in AuthContext)
-│   ├── services/          # Business logic & external services (auth, firestore, storage, notifications)
-│   ├── models/            # TypeScript interfaces/types (Content, PlatformConnection, UserProfile etc.)
+│   │   ├── auth/          
+│   │   └── content/       # Content components (ContentList, Forms)
+│   ├── contexts/          # React Context definitions (AuthContext, NotificationsContext)
+│   ├── hooks/             # Custom React hooks (useAuth is part of AuthContext)
+│   ├── services/          # Business logic & external services (auth, firestore, storage, notifications, publishing)
+│   ├── models/            # TypeScript interfaces/types (Content, PlatformConnection, UserProfile)
 │   ├── utils/             # Utility functions (validation, errorHandling)
-│   └── firebase/          # Firebase config (config.ts)
+│   └── firebase/          # Firebase config (config.ts - client, config.server.ts - admin)
 ├── __tests__/             # Test files (Jest/RTL) - Mirroring src structure (Currently contains tests for services, utils, some components)
 ├── __mocks__/             # Manual mocks for Jest
 ├── public/                # Static assets
@@ -65,162 +82,152 @@ creatorSync/
 └── tsconfig.json          # TypeScript config
 ```
 
-## Key Components and Logic
+## Key Components and Logic (Updated)
 
 ### Core Application (`src/app/`)
-- **Root Layout (`layout.tsx`):** Sets up HTML structure, includes global styles, fonts (Inter), Font Awesome, and wraps content with `AppProviders`. Renders `Navbar` and `Footer`.
-- **App Providers (`src/components/providers/AppProviders.tsx`):** Wraps the application with necessary context providers (`AuthProvider`, `NotificationsProvider`).
-- **Authentication (`(auth)/`):** Contains pages for login, registration, and forgot password, using a specific layout.
-- **Dashboard (`dashboard/`):** Main area for authenticated users. Includes pages for viewing content (`page.tsx`), creating content (`create/page.tsx`), editing content (`edit/[id]/page.tsx`), and viewing platform settings (`settings/platforms/page.tsx`).
+- **Root Layout (`layout.tsx`):** Server Component. Sets up HTML structure, includes global styles. Renders `MainLayout`.
+- **Main Layout (`src/components/layout/MainLayout.tsx`):** Client Component. Applies main flex structure, includes `AppProviders`, `Toaster`, `Navbar`, `Footer`.
+- **App Providers (`src/components/providers/AppProviders.tsx`):** Wraps the application with `AuthProvider`, `NotificationsProvider`.
+- **Authentication (`(auth)/`):** Login, registration pages.
+- **Dashboard (`dashboard/`):** Main authenticated area. 
+    - `page.tsx`: Displays aggregate stats (views, likes, comments, earnings placeholder) and the user's content list via `ContentList`.
+    - `create/page.tsx`: Content creation form.
+    - `edit/[id]/page.tsx`: Content editing form and the "Publish Now" section.
+    - `settings/platforms/page.tsx`: Displays platform connection status with Connect/Disconnect buttons.
+- **API Routes (`api/`):** Backend handlers for specific actions.
+    - `connect/[platform]`: Initiates OAuth flow, sets state cookie.
+    - `connect/[platform]/callback`: Handles OAuth redirect, verifies state, exchanges code for tokens, fetches profile (placeholder), saves connection to Firestore.
+    - `disconnect/[platform]`: Deletes connection from Firestore, attempts token revocation (placeholder).
+    - `publish/[contentId]`: Triggers the publishing service for specified platforms.
+    - `content/[contentId]`: Handles `DELETE` requests (Firestore doc + Storage file).
+    - `content/[contentId]/like`: Handles `POST` requests to increment like count.
 
 ### Components (`src/components/`)
-- **Common:** Reusable UI elements like `Button`, `Card`, `Input`, `FormErrorMessage`.
-- **Layout:** `Navbar` (displays navigation, user info, notifications) and `Footer`.
+- **Common:** Reusable UI (Button, Card, Input, etc.). `StatCard` added (currently defined in Dashboard page).
+- **Layout:** `Navbar`, `Footer`, `MainLayout`.
 - **Content:**
-    - `ContentList`: Displays a list of content items with status badges, dates, platforms, and action buttons.
-    - `CreateContentForm`: Form for creating new content (title, desc, file, platforms, schedule).
-    - `EditContentForm`: Form for editing existing content metadata (pre-populated, no file change).
+    - `ContentList`: Displays content items, now includes stats (views, likes, comments) and a Like button.
+    - `CreateContentForm`, `EditContentForm`.
 
 ### State Management (`src/contexts/`)
-- **`AuthContext`:** Manages user authentication state (`user`, `userProfile`, `platformConnections`, `loading`). Provides functions for `signIn`, `signUp`, `logOut`, profile updates, and fetching/refreshing user data and platform connections. Exports `useAuth` hook for easy access.
-- **`NotificationsContext`:** (Implementation details not fully explored in Phase 1 docs update) Likely manages fetching and displaying user notifications.
+- **`AuthContext`:** Manages user auth state, profile, platform connections. Provides `signIn`, `logOut`, `getIdToken`, `refreshPlatformConnections`, etc. Imports `firestore.service` (path corrected).
+- **`NotificationsContext`:** (Still largely placeholder).
 
 ### Services (`src/services/`)
-- **`auth.service.ts`:** Handles direct interaction with Firebase Authentication (creating users, signing in/out, password reset, profile updates via Firebase Auth SDK).
-- **`firestore.service.ts`:** Handles interactions with Firestore database.
-    - User profile CRUD (e.g., `getUserProfile`, `updateUserProfile`).
-    - Platform connections (`getUserPlatformConnections`).
-    - Content CRUD (`createCreatorContent`, `getUserContent`, `getCreatorContentById`, `updateCreatorContent`, `deleteContent`).
-    - Notification management functions.
-- **`storage.service.ts`:** Handles interactions with Firebase Storage.
-    - Generic file upload (`uploadFile`).
-    - Content file upload (`uploadContentFile`) using unique paths.
-    - File deletion (`deleteFile`).
-    - Helper for getting path from URL (`getFilePathFromURL`).
-- **`notifications.service.ts`:** (Implementation details not fully explored in Phase 1 docs update) Likely handles creating, fetching, and marking notifications in Firestore.
+- **`auth.service.ts`:** Firebase Auth interactions.
+- **`firestore.service.ts`:** Firestore CRUD operations for profiles, content, connections.
+- **`storage.service.ts`:** Firebase Storage interactions.
+- **`notifications.service.ts`:** (Placeholder).
+- **`publishing.service.ts`:** (New) Encapsulates platform publishing logic.
+    - Contains placeholder functions `publishToTikTok`, `publishToInstagram`, `publishToX`.
+    - Contains placeholder function `refreshAccessToken`.
+    - Contains orchestration function `publishContentToPlatforms` which calls the platform-specific functions and handles token expiry checks/refresh attempts.
 
 ### Models (`src/models/`)
-- **`Content.ts`:** Defines the structure for content documents stored in Firestore (`creatorContent` collection).
-- **`PlatformConnection.ts`:** Defines the structure for user platform connection data stored in Firestore (`users/{userId}/platformConnections` subcollection).
-- (Other models like `UserProfile`, `Notification` likely exist or are needed).
+- **`Content.ts`:** Updated with `views`, `likes`, `commentsCount`, `publishedPlatforms`, and `estimatedEarnings` fields.
+- **`PlatformConnection.ts`:** Defines connection structure.
+- (Other models like `UserProfile`).
 
 ### Utilities (`src/utils/`)
-- **`validation.ts`:** Contains functions for validating various inputs (email, password, name, required fields, etc.).
-- **`errorHandling.ts`:** Provides functions to handle and format errors, especially Firebase errors, into a consistent `AppError` structure.
+- **`validation.ts`**, **`errorHandling.ts`**.
 
 ### Firebase (`src/firebase/` & root `firebase/`)
-- **`config.ts`:** Initializes Firebase app using environment variables.
-- **Root `firebase/` directory:** Contains CLI config (`firebase.json`), security rules (`firestore.rules`, `storage.rules`), and potentially index definitions.
+- **`config.ts`:** Client-side Firebase initialization.
+- **`config.server.ts`:** (New) Server-side Firebase Admin SDK initialization using environment variables.
+- Root files: Rules, CLI config.
 
 ### Testing (`__tests__/`)
-- Contains unit and integration tests using Jest and React Testing Library.
-- Mirrors `src` structure.
-- Includes tests for services (mocking Firebase), utilities, and some common components and pages.
-- Setup (`jest.setup.js`) includes global mocks (e.g., for `next/navigation`, Firebase SDK).
-- **Current Status:** Testing was paused to focus on Phase 1 feature completion. Many tests exist but some (like `useAuth.test.tsx`) were failing due to complex mocking issues. Testing needs to be revisited comprehensively.
+- **Status:** Paused/Deferred. Contains existing tests for services, utils, components. Requires fixes (esp. `useAuth`) and expansion.
 
-## Architectural Patterns & Data Flow
+## Architectural Patterns & Data Flow (Updated)
 
-1.  **Component Structure:** Functional components with hooks (App Router conventions).
-2.  **State Management:** Combination of:
-    - React Context (`AuthContext`, `NotificationsContext`) for global state (auth status, profile, connections, notifications).
-    - Local component state (`useState`) for UI state, form data, loading/error flags within specific pages/components.
-3.  **Data Fetching:** Primarily driven by:
-    - `AuthContext` fetching user profile and platform connections on auth state change.
-    - Page components (`DashboardPage`, `EditContentPage`) fetching necessary data via `useEffect` and service functions.
-4.  **Service Layer:** Abstraction layer (`src/services/`) encapsulates Firebase interactions, promoting separation of concerns and testability.
-5.  **Error Handling:** Centralized utility (`errorHandling.ts`) and local `try/catch` blocks in service calls and component submit handlers.
-6.  **Routing:** Managed by Next.js App Router file-based routing, including route groups `(auth)` and dynamic routes `[id]`.
+- **API Routes:** Used for backend logic triggered by client actions (OAuth, Disconnect, Publish, Delete, Like) requiring secure operations or admin privileges.
+- **Server Components (`layout.tsx`) vs Client Components (`MainLayout.tsx`, pages):** Following Next.js App Router patterns to separate concerns.
+- **Client-Side Aggregation:** Basic analytics (total views, likes, etc.) are currently calculated on the client in the Dashboard page based on fetched data. Could be moved to backend/Cloud Functions for larger scale.
+- **Optimistic Updates:** Used for actions like Liking and Deleting content on the Dashboard for a smoother UX, with error handling to revert if the backend call fails.
 
 ## Documentation (memory-bank)
 
-The `memory-bank/` directory contains comprehensive project documentation:
-
-```
-memory-bank/
-├── 01_content_creator_pain_points.md  # Research on user needs
-├── 02_product_requirements_document.md # Feature requirements
-├── 03_saas_proposal.md                # Business model and pricing
-├── 04_tech_stack.md                   # Technology choices
-├── 05_cursor_rules.md                 # Development guidelines
-├── 06_implementation_plan.md          # Development roadmap
-├── 07_ui_mockups.md                   # Interface designs
-├── 08_business_roadmap.md             # 12-month plan
-├── 09_marketing_plan.md               # Marketing strategy
-├── 10_final_deliverable.md            # Compiled business plan
-├── progress.md                        # Development progress tracking
-└── architecture.md                    # This file - architecture overview
-```
+- Updated to reflect Phase 2 & 3 progress.
 
 ## Key Architectural Patterns
 
-### Authentication Flow
+(No major changes to listed patterns, but API routes are now a key part)
 
-1. User authentication through Firebase Auth
-2. Custom authentication hooks (`useAuth`)
-3. Protected routes with authentication checking
-4. User profile data stored in Firestore
-5. Role-based access control via Firebase custom claims
+### Authentication Flow
+(No change)
 
 ### Data Flow
-
-1. UI Components request data through custom hooks
-2. Hooks interact with services for business logic
-3. Services call Firebase or external APIs
-4. Data is cached in React Query/SWR for performance
-5. Real-time updates via Firestore listeners
+1. UI Components trigger actions (button clicks).
+2. Handlers call backend API Routes (for secure actions like delete, publish, OAuth) or Service functions directly (for client-side fetches like `getUserContent`).
+3. API Routes use Admin SDK (`config.server.ts`) for auth/DB access.
+4. Services use Client SDK (`config.ts`) or Admin SDK (if called from API route) or platform SDKs (TODO).
+5. Data stored/retrieved from Firebase (Firestore, Storage).
+6. State updated via Context (`AuthContext`) or local state, sometimes optimistically.
 
 ### Testing Strategy
-
-1. Unit tests for hooks, services, and utilities
-2. Component tests for UI elements
-3. Integration tests for feature workflows
-4. E2E tests for critical user journeys
-5. Firebase emulator tests for backend logic
+(No change - Still Paused)
 
 ## Firebase Implementation
 
-### Firestore Data Model
+### Firestore Data Model (Updated)
 
 ```
 users/
-  {userId}/                # User document
-    profile: {}            # User profile data
-    settings: {}           # User preferences
-    platforms: {}          # Connected platforms
+  {userId}/                
+    // profile: {}           # (Implicitly handled by Auth, extra fields could be here)
+    // settings: {}          # (Not implemented yet)
+    platformConnections/     # SUBCOLLECTION
+        {platformId}/        # e.g., 'tiktok', 'x'
+            accessToken: "..."
+            refreshToken: "..." # Optional
+            expiresAt: Timestamp | null
+            scope: "..."
+            profileInfo: { id: "...", username: "..." } # Fetched from platform
+            connectedAt: Timestamp
+            status: "active" | "needs_reauth" # etc.
 
-content/
-  {userId}/
-    {contentId}/           # Content document
-      metadata: {}         # Content metadata
-      versions: {}         # Platform-specific versions
-      analytics: {}        # Performance data
+creatorContent/
+  {contentId}/           
+      userId: "..."
+      title: "..."
+      description: "..."
+      mediaUrl: "..." | null
+      mediaType: "video" | "image" | "text"
+      tags: ["...", "..."]
+      status: "draft" | "scheduled" | "published" | "partially_published" | ...
+      createdAt: Timestamp
+      updatedAt: Timestamp
+      scheduledDate: Timestamp | null
+      publishDate: Timestamp | null
+      views: number          # Added
+      likes: number          # Added
+      commentsCount: number  # Added
+      publishedPlatforms: {  # Added
+          tiktok: { success: true, postId: "...", publishedAt: Timestamp },
+          x: { success: false, error: "..." }
+      }
+      estimatedEarnings: {   # Added
+          tiktok: 1.50,
+          instagram: 0.75
+      }
+      error: "..." | null
 
-schedules/
-  {userId}/
-    {scheduleId}/          # Schedule document
-      content: {}          # Scheduled content
-      platforms: []        # Target platforms
+# comments/ (Separate collection, linked by contentId)
+#   {commentId}/
+#       contentId: "..."
+#       userId: "..."
+#       text: "..."
+#       createdAt: Timestamp
 
-analytics/
-  {userId}/
-    {platform}/            # Platform-specific analytics
-      {date}/              # Daily metrics
+# notifications/ (Separate collection, linked by userId)
+#   {notificationId}/
+#       userId: "..."
+#       message: "..."
+#       read: boolean
+#       createdAt: Timestamp
 
-monetization/
-  {userId}/
-    deals/                 # Brand deals
-    revenue/               # Revenue tracking
 ```
-
-### Security Rules
-
-Firebase security rules enforce:
-1. User data isolation
-2. Role-based access
-3. Data validation
-4. Rate limiting
-5. User-content relationships
 
 ## Integration Points
 
