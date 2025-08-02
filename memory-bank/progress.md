@@ -4,7 +4,7 @@
 
 This document tracks the progress of the CreatorSync project development. It serves as a changelog and progress indicator for the development team, documenting completed tasks, current status, and upcoming priorities.
 
-*Last Updated: 2025-05-04*
+*Last Updated: 2025-04-06*
 
 ## Project Initialization (Completed)
 
@@ -98,7 +98,7 @@ This document tracks the progress of the CreatorSync project development. It ser
 - [x] Add basic loading states for data fetching and form submissions
 - [x] Implement basic error handling display (e.g., messages on forms)
 
-## Implementation Progress - Phase 2 (Partially Completed)
+## Implementation Progress - Phase 2 (Completed - Structure & Placeholders)
 
 *Focus: Core Features - Platform Integration & Publishing Framework, UI Refinements*
 
@@ -138,11 +138,11 @@ This document tracks the progress of the CreatorSync project development. It ser
 ### Infrastructure (Partially Complete)
 - [x] **CI/CD:** Create basic GitHub Actions workflow (`.github/workflows/ci.yml`) for linting & testing (with placeholder env vars).
 - [ ] **CI/CD:** Configure deployment steps (e.g., to Vercel/Firebase Hosting).
-- [ ] **Firebase Admin SDK:** Create server config (`config.server.ts`), requires secure service account key setup.
+- [x] **Firebase Admin SDK:** Create server config (`src/firebase/admin.ts`), requires secure service account key setup.
 
-## Implementation Progress - Phase 3 (Partially Completed)
+## Implementation Progress - Phase 3 (Completed - Core Functionality)
 
-*Focus: Advanced Features - Analytics, Monetization, Community Placeholders*
+*Focus: Publishing Trigger, Scheduling, Basic Analytics/Engagement*
 
 ### Monetization Hub (Placeholders Complete)
 - [x] **Model:** Add `estimatedEarnings` field to `Content` model.
@@ -161,35 +161,62 @@ This document tracks the progress of the CreatorSync project development. It ser
 - [x] **UI:** Ensure individual stats (`views`, `likes`, `commentsCount`) are displayed in `ContentList` items.
 - [ ] **Backend Aggregation:** Implement backend functions/logic for more robust/scalable analytics (deferred).
 
+### Content Publishing (Manual Trigger - Complete)
+- [x] **API:** Create API route (`/api/content/[contentId]/publish`) using Admin SDK to update status.
+- [x] **UI:** Verify `ContentList` has button/prop.
+- [x] **Interaction:** Implement `handlePublishContent` in `DashboardPage` to call the API.
+
+### Content Scheduling (Complete)
+- [x] **Model/UI:** Verify model fields (`scheduledDate`) and form input (`CreateContentForm`).
+- [x] **Service:** Update `createContent` and `updateContent` in `src/firebase/content.ts` to handle scheduling logic and Timestamps.
+- [x] **Cloud Function:** Create scheduled function (`src/firebase/functions/scheduledPublish.ts`) to query and update status.
+- [x] **Cloud Function:** Index function in `src/firebase/functions/index.ts`.
+
+### Infrastructure & Tooling (Complete)
+- [x] **Bundle Analysis:** Setup `@next/bundle-analyzer`.
+- [x] **Error Resolution:** Fixed build errors related to layout/providers/imports.
+- [x] **Documentation:** Updated `README.md` with project details, setup, features.
+
 ## Testing (Paused)
 
 - [ ] **Revisit & Fix:** `useAuth` hook tests.
-- [ ] **Expand Coverage:** Add tests for Phase 1, 2, 3 features.
-- [ ] **Emulator Setup:** Fully configure and utilize Firebase Emulator testing.
-- [ ] **E2E Tests:** Implement critical flow tests (Login, Create, Publish trigger, Connect Platform).
+- [ ] **Expand Coverage:** Add tests for Phase 1, 2, 3 features (Components, Services, API Routes).
+- [ ] **Emulator Setup:** Fully configure and utilize Firebase Emulator testing for integration tests.
+- [ ] **E2E Tests:** Implement critical flow tests (Login, Create, Schedule, Publish trigger, Like, Delete).
 
-## Current Development Status (End of Phase 3 Structure)
+## Current Development Status (End of Phase 3 Functionality)
 
-Phase 1 (Foundation) is complete. Phase 2 (Core Features) structural framework is complete, including OAuth connection/disconnection flow APIs and UI, content publishing service structure, publishing API trigger, basic CI setup, and UI refinements like toast notifications and improved loading states. Phase 3 (Advanced Features) placeholders and basic features are implemented, including monetization fields in the model, aggregate stat display on the dashboard, and a functional (optimistic UI + backend API) content liking system.
+Phase 1 (Foundation) is complete. Phase 2 (Core Features) structural framework and placeholders are complete. Phase 3 (Publishing Trigger, Scheduling, Basic Engagement/Analytics) core functionality is now implemented.
 
-**Key Blockers / Next Steps Requiring External Input:**
+**Key Blockers / Items Requiring External Input or Setup:**
 1.  **Platform API Keys/Secrets:** Required to implement actual OAuth connections and content publishing.
-2.  **Platform API Implementation:** Detailed logic for each platform's specific API (profile fetch, token revoke/refresh, content publishing) needs to be written within the placeholder functions.
-3.  **Firebase Admin SDK Credentials:** Secure setup of the service account key environment variable.
-4.  **Testing:** Requires dedicated effort to fix existing issues and build out comprehensive coverage.
-5.  **Server Start Issues:** The persistent `Module not found` errors need final resolution to allow local development server testing.
+2.  **Testing:** Requires dedicated effort to fix existing issues and build out comprehensive coverage.
+3.  **Firebase Admin SDK Credentials:** Secure setup of the service account key environment variable for local development without emulators or for specific deployment environments.
 
-**Next Technical Phase (Phase 4):** Scaling & Optimization (e.g., backend analytics aggregation, performance tuning, potential mobile considerations) OR revisit Phase 2 API implementation if keys/details become available.
+**Next Technical Steps:**
+1.  **Testing:** Address existing test issues and implement comprehensive test coverage (Unit, Integration, E2E).
+2.  **Platform API Implementation:** Integrate actual platform APIs within the existing placeholders (OAuth, Content Publishing).
+3.  **Content Editing:** Implement data loading and saving logic for the Edit Content page.
+4.  **Deployment:** Configure CI/CD and deploy the application and Cloud Functions.
+5.  **Refinements:** Address UI/UX polish, advanced error handling, and performance optimizations.
 
 ## Recent Updates
 
-* **[2025-05-04]** Phase 3 Implementation (Placeholders & Basic Features):
+* **[2025-04-06]** Phase 3 Completion & Refinements:
+    * Set up bundle analysis tools (`@next/bundle-analyzer`).
+    * Resolved build errors related to metadata export and provider imports.
+    * Implemented manual content publishing trigger (API route `/api/content/[contentId]/publish`, updated `handlePublishContent` in Dashboard).
+    * Implemented content scheduling backend (updated Firestore services `createContent`/`updateContent`, created scheduled Cloud Function `scheduledPublisher`, configured Admin SDK and Function index).
+    * Fixed linter error in `getUserContent` query logic.
+    * Updated `README.md` significantly with project details, features, setup, structure, tech stack, scripts.
+    * Committed and pushed Phase 3 completion to GitHub.
+* **[2025-04-06]** Phase 3 Implementation (Placeholders & Basic Features):
     * Added `estimatedEarnings` to `Content` model.
     * Added StatCards to Dashboard for aggregate analytics (Views, Likes, Comments, Est. Earnings) calculated client-side.
     * Implemented Like functionality: API route (`/api/content/[contentId]/like`), UI button in `ContentList`, handler in `DashboardPage` with optimistic update.
-    * Updated documentation.
-* **[2025-05-04]** Phase 2 Implementation (Structure & Refinements):
-    * Created server-side Firebase Admin config (`config.server.ts`).
+    * Updated documentation (`architecture.md`, `progress.md`).
+* **[2025-04-06]** Phase 2 Implementation (Structure & Refinements):
+    * Created server-side Firebase Admin config (`src/firebase/admin.ts`).
     * Updated API routes to use Admin SDK.
     * Implemented secure OAuth state handling via HttpOnly cookies.
     * Created backend API route for secure content deletion (`/api/content/[contentId]` with DELETE method) handling Firestore doc and Storage file.
@@ -202,7 +229,7 @@ Phase 1 (Foundation) is complete. Phase 2 (Core Features) structural framework i
     * Created API route to trigger publishing (`/api/publish/[contentId]`).
     * Added "Publish Now" section to Edit page.
     * Implemented OAuth connection/disconnection API routes and UI placeholders.
-* **[2025-05-04]** Phase 1 Completion:
+* **[2025-04-06]** Phase 1 Completion:
     * Completed all foundational setup, auth flow, basic content management, and documentation.
     * Updated progress and architecture docs.
     * Committed Phase 1 completion.

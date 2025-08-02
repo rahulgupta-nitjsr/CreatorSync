@@ -130,4 +130,7 @@ dynamodb/
 .pnp.*
 
 # SWC files
-.swc/ 
+.swc/
+
+# Project-specific files
+memory-bank/progress.md 
