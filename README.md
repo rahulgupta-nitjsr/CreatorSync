@@ -139,6 +139,28 @@ As an AI Sr Product Manager building this as a weekend project, I chose technolo
 
 ---
 
+## 🖼️ **Product UI Design**
+
+Experience the professional, modern interface of CreatorSync designed for content creators who demand excellence.
+
+### **🏠 Landing Page**
+![CreatorSync Landing Page](public/screenshots/1%20Home%20Main%20Banner.png)
+*Hero section showcasing CreatorSync's main value proposition and call-to-action*
+
+### **⚙️ Core Functionality**
+![CreatorSync Dashboard](public/screenshots/2.%20Functionality.png)
+*Main dashboard interface demonstrating content management and analytics features*
+
+### **🚀 User Onboarding**
+![CreatorSync Signup](public/screenshots/3%20Ready%20to%20Join.png)
+*Streamlined user registration and onboarding experience*
+
+### **💰 Pricing Plans**
+![CreatorSync Pricing](public/screenshots/4%20Pricing.png)
+*Transparent pricing structure with tiered plans for different creator needs*
+
+---
+
 ## 🛠️ **Technology Stack**
 
 ### **Frontend**
