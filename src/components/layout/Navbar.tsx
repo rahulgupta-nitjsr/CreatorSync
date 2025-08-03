@@ -88,6 +88,39 @@ export function Navbar() {
                   </Link>
                   
                   <Link
+                    href="/analytics"
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                      isActive('/analytics')
+                        ? 'border-blue-500 text-gray-900'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`}
+                  >
+                    Analytics
+                  </Link>
+                  
+                  <Link
+                    href="/monetization"
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                      isActive('/monetization')
+                        ? 'border-blue-500 text-gray-900'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`}
+                  >
+                    Monetization
+                  </Link>
+                  
+                  <Link
+                    href="/community"
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                      isActive('/community')
+                        ? 'border-blue-500 text-gray-900'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`}
+                  >
+                    Community
+                  </Link>
+                  
+                  <Link
                     href="/settings/profile"
                     className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
                       isActive('/settings')
@@ -365,6 +398,42 @@ export function Navbar() {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Content
+              </Link>
+              
+              <Link
+                href="/analytics"
+                className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                  isActive('/analytics')
+                    ? 'border-blue-500 text-blue-700 bg-blue-50'
+                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
+                }`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Analytics
+              </Link>
+              
+              <Link
+                href="/monetization"
+                className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                  isActive('/monetization')
+                    ? 'border-blue-500 text-blue-700 bg-blue-50'
+                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
+                }`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Monetization
+              </Link>
+              
+              <Link
+                href="/community"
+                className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                  isActive('/community')
+                    ? 'border-blue-500 text-blue-700 bg-blue-50'
+                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
+                }`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Community
               </Link>
               
               <Link

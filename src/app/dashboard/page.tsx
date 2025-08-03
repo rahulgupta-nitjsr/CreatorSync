@@ -13,6 +13,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { Loader2, DollarSign, Eye, ThumbsUp, MessageSquare } from 'lucide-react'; // Import a spinner icon and other icons
 import { StatCard } from '@/components/common/StatCard'; // Import the memoized StatCard
+import { SkeletonDashboard, SkeletonContentList } from '@/components/common/Skeleton'; // Import skeleton loaders
 
 // Define the ContentItem type matching ContentListProps
 interface ContentItem {
@@ -189,9 +190,8 @@ export default function DashboardPage() {
   // Show loading state or placeholder if auth loading or no user yet
   if (authLoading || !user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500 mb-4" />
-        <p className="text-gray-500">Loading dashboard...</p>
+      <div className="container mx-auto p-4">
+        <SkeletonDashboard />
       </div>
     );
   }
@@ -230,9 +230,8 @@ export default function DashboardPage() {
 
       {/* Content Loading/Error/List Section */}
       {contentLoading ? (
-        <div className="flex flex-col items-center justify-center p-10">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-500 mb-4" />
-          <p className="text-gray-500">Loading content...</p>
+        <div className="bg-white rounded-lg shadow border p-6">
+          <SkeletonContentList />
         </div>
       ) : contentError ? (
         <div className="text-center p-6 bg-red-100 rounded-lg text-red-700" role="alert">
