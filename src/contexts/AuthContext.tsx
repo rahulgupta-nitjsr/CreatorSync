@@ -16,12 +16,15 @@ import { auth, db } from '@/firebase/config';
 import {
   AuthServiceError,
   handleAuthError,
-  // We might not need these service imports if logic is fully in context
-  // signIn as signInService,
-  // signUp as signUpService,
-  // updateUserProfile
-} from '@/services/auth'; // Assuming auth service for error handling primarily
-import { getUserPlatformConnections } from '@/services/firestore.service';
+  signIn,
+  signUp,
+  logOut,
+  resetPassword,
+  updateUserProfile,
+  getUserProfile,
+  subscribeToAuthChanges
+} from '@/services/auth';
+import { getUserPlatformConnections } from '@/services/firestore';
 import { PlatformConnection } from '@/models/platformConnection';
 
 interface AuthContextType {
@@ -57,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchUserProfile = async (currentUser: User) => {
     try {
       if (currentUser) {
-        const profile = await getUserProfile(currentUser.uid);
+        const profile = await getUserProfile(currentUser);
         setUserProfile(profile);
       }
     } catch (error) {
@@ -98,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('No user is signed in');
     }
     
-    await updateUserProfile(user.uid, data);
+    await updateUserProfile(user, data);
     await refreshUserProfile();
   };
 
@@ -130,8 +133,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userProfile,
     platformConnections,
     loading,
-    signIn: (email, password) => signIn(email, password),
-    signUp: (data) => signUp(data),
+    signIn: async (email: string, password: string) => {
+      const userCredential = await signIn(email, password);
+      return userCredential.user;
+    },
+    signUp: async (data: any) => {
+      const { email, password, displayName } = data;
+      const userCredential = await signUp(email, password, displayName);
+      return userCredential.user;
+    },
     logOut: async () => {
       await logOut();
     },

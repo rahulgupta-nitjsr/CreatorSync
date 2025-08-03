@@ -191,4 +191,5 @@ const ContentList: React.FC<ContentListProps> = ({ items, onEdit, onDelete, onPu
   );
 }
 
+export { ContentList };
 export default ContentList; 

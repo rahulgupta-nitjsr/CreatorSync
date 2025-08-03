@@ -10,9 +10,9 @@ import { Card } from '@/components/common/Card';
 import { getUserPlatforms } from '@/firebase/platforms';
 import { createContent } from '@/firebase/content';
 import Link from 'next/link';
-import CreateContentForm from '@/components/content/CreateContentForm';
-import { uploadContentFile } from '@/services/storage.service';
-import { createCreatorContent } from '@/services/firestore.service';
+import { CreateContentForm } from '@/components/content/CreateContentForm';
+import { uploadContentFile } from '@/services/storage';
+import { createCreatorContent } from '@/services/firestore';
 import toast from 'react-hot-toast';
 
 interface PlatformToggle {

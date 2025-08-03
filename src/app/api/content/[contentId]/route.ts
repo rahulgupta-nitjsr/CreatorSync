@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authAdmin, firestoreAdmin, storageAdmin } from '@/firebase/config.server';
-import { getFilePathFromURL } from '@/services/storage.service'; // Reuse utility if it exists
+import { getFilePathFromURL } from '@/services/storage'; // Reuse utility if it exists
 
 /**
  * DELETE handler to remove content.

@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { Inter } from "next/font/google"; // Keep font import if used for className
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
+import { Navbar } from '@/components/layout/Navbar';
+import { Footer } from '@/components/layout/Footer';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { Toaster } from 'react-hot-toast';
@@ -21,7 +21,7 @@ interface MainLayoutProps {
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
     // Apply font className and layout structure here
-    <div className={`${inter.className} flex flex-col min-h-screen`}>
+    <div className={`${inter.className} min-h-screen`}>
       <AuthProvider>
         <NotificationsProvider>
           <Toaster 
@@ -30,23 +30,35 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             toastOptions={{
               duration: 5000,
               style: {
-                  background: '#363636',
-                  color: '#fff',
+                background: 'rgba(55, 65, 81, 0.95)',
+                backdropFilter: 'blur(10px)',
+                color: '#fff',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '12px',
+                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
               },
               success: {
-                  duration: 3000,
-                  theme: {
-                      primary: 'green',
-                      secondary: 'black',
-                  },
+                duration: 3000,
+                style: {
+                  background: 'rgba(34, 197, 94, 0.95)',
+                  backdropFilter: 'blur(10px)',
+                  color: '#fff',
+                  border: '1px solid rgba(34, 197, 94, 0.2)',
+                },
               },
               error: {
-                  duration: 5000,
+                duration: 5000,
+                style: {
+                  background: 'rgba(239, 68, 68, 0.95)',
+                  backdropFilter: 'blur(10px)',
+                  color: '#fff',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                },
               }
             }}
           />
           <Navbar />
-          <main className="flex-grow container mx-auto px-4 py-8">
+          <main className="min-h-screen">
             {children} 
           </main>
           <Footer />

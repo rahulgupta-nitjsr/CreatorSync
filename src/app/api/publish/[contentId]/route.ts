@@ -35,7 +35,7 @@ export async function POST(
   try {
     const body = await request.json();
     if (!Array.isArray(body.platforms) || body.platforms.length === 0) {
-      return NextResponse.json({ error: 'Missing or invalid 'platforms' array in request body.' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing or invalid platforms array in request body.' }, { status: 400 });
     }
     platformsToPublish = body.platforms;
   } catch (e) {

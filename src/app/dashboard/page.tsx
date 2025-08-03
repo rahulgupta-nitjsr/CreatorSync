@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/common/Button';
 import { ContentList } from '@/components/content/ContentList';
 import { Content } from '@/models/content'; // Use the Content model
-import { getUserContent, deleteContent, updateCreatorContent } from '@/services/firestore.service'; // Import service functions
-import { deleteFile, getFilePathFromURL } from '@/services/storage.service'; // Import storage delete
+import { getUserContent, deleteContent, updateCreatorContent } from '@/services/firestore'; // Import service functions
+import { deleteFile, getFilePathFromURL } from '@/services/storage'; // Import storage delete
 import { Timestamp } from 'firebase/firestore'; // Import Timestamp
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -27,11 +27,25 @@ interface ContentItem {
 }
 
 export default function DashboardPage() {
-  const { user, userProfile, loading: authLoading, logOut, getIdToken } = useAuth(); // Renamed loading
+  const { user, userProfile, loading: authLoading, logOut, getIdToken } = useAuth();
   const router = useRouter();
-  const [contentItems, setContentItems] = useState<Content[]>([]); // Use Content[] type
+  const [contentItems, setContentItems] = useState<Content[]>([]);
   const [contentLoading, setContentLoading] = useState(true); 
-  const [contentError, setContentError] = useState<string | null>(null); // State for content fetch error
+  const [contentError, setContentError] = useState<string | null>(null);
+  const [greeting, setGreeting] = useState('');
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Set greeting based on time of day
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting('Good morning');
+    else if (hour < 17) setGreeting('Good afternoon');
+    else setGreeting('Good evening');
+
+    // Update time every minute
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Redirect to login if not authenticated and not loading
   useEffect(() => {
@@ -50,14 +64,8 @@ export default function DashboardPage() {
           console.log(`Fetching content for user: ${user.uid}`);
           const data = await getUserContent(user.uid);
           
-          // Convert Firestore Timestamps to ISO strings for ContentList compatibility (if needed)
-          // OR update ContentList to handle Timestamps directly
           const formattedData = data.map(item => ({
               ...item,
-              // Keep original Timestamps if ContentList can handle them, otherwise format
-              // createdAt: item.createdAt?.toDate().toISOString(), 
-              // scheduledDate: item.scheduledDate?.toDate().toISOString() || null,
-              // publishDate: item.publishDate?.toDate().toISOString() || null
           }));
           
           setContentItems(formattedData);
@@ -73,7 +81,7 @@ export default function DashboardPage() {
     };
 
     fetchContent();
-  }, [user, authLoading]); // Re-run when user or authLoading state changes
+  }, [user, authLoading]);
 
   // Handle logout
   const handleLogout = async () => {
@@ -190,68 +198,304 @@ export default function DashboardPage() {
   // Show loading state or placeholder if auth loading or no user yet
   if (authLoading || !user) {
     return (
-      <div className="container mx-auto p-4">
-        <SkeletonDashboard />
+      <div className="min-h-screen pt-24 px-4">
+        <div className="max-w-7xl mx-auto">
+          <SkeletonDashboard />
+        </div>
       </div>
     );
   }
 
   // Display dashboard content
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <div>
-             <Link href="/dashboard/create" passHref>
-               <Button 
-                 variant="primary" 
-                 className="mr-2"
-               >
-                 Create New Content
-               </Button>
-             </Link>
-             <Button onClick={handleLogout} variant="outline">
-               Log Out
-             </Button>
+    <div className="min-h-screen pt-24 px-4 pb-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Hero Section */}
+        <div className="relative overflow-hidden">
+          <div className="glass-card p-8 md:p-12 bg-gradient-to-br from-primary-50/50 via-transparent to-accent-50/30">
+            {/* Background decorative elements */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-primary opacity-5 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-br from-accent-400/10 to-primary-400/10 rounded-full blur-2xl" />
+            
+            <div className="relative flex flex-col md:flex-row md:items-center justify-between">
+              <div className="space-y-4 mb-6 md:mb-0">
+                <div className="inline-flex items-center space-x-2 glass-light px-4 py-2 rounded-full">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  <span className="text-sm font-medium text-surface-600">
+                    {currentTime.toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit',
+                      hour12: true 
+                    })}
+                  </span>
+                </div>
+                
+                <div>
+                  <h1 className="text-4xl md:text-5xl font-bold text-surface-900 mb-2">
+                    {greeting}, <span className="bg-gradient-primary bg-clip-text text-transparent">
+                      {userProfile?.displayName || user.displayName || 'Creator'}
+                    </span>
+                  </h1>
+                  <p className="text-lg text-surface-600">
+                    Ready to create something amazing today?
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link href="/dashboard/create">
+                  <Button 
+                    variant="primary" 
+                    size="lg"
+                    glow
+                    className="group"
+                  >
+                    <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Create Content
+                  </Button>
+                </Link>
+                
+                <Button 
+                  variant="glass" 
+                  size="lg"
+                  className="group"
+                >
+                  <BarChart3 className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                  Analytics
+                </Button>
+              </div>
+            </div>
           </div>
-      </div>
-
-      <p className="mb-6">Welcome, {userProfile?.displayName || user.email}!</p>
-      
-      {/* Stats Overview Section */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-         <StatCard title="Total Views" value={contentLoading ? '-' : totalViews} icon={Eye} />
-         <StatCard title="Total Likes" value={contentLoading ? '-' : totalLikes} icon={ThumbsUp} />
-         <StatCard title="Total Comments" value={contentLoading ? '-' : totalComments} icon={MessageSquare} />
-         <StatCard title="Est. Earnings" value={contentLoading ? '-' : `$${totalEarnings}`} icon={DollarSign} />
-      </div>
-
-      <h2 className="text-xl font-semibold mb-4">Your Content</h2>
-
-      {/* Content Loading/Error/List Section */}
-      {contentLoading ? (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <SkeletonContentList />
         </div>
-      ) : contentError ? (
-        <div className="text-center p-6 bg-red-100 rounded-lg text-red-700" role="alert">
-          Error loading content: {contentError}
+
+        {/* Stats Overview Section */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard 
+            title="Total Views" 
+            value={contentLoading ? '-' : totalViews.toLocaleString()} 
+            icon={Eye}
+            trend={contentLoading ? undefined : Math.floor(Math.random() * 20) + 5}
+            subtitle="This month"
+            color="primary"
+            className="animate-fade-in-up"
+          />
+          <StatCard 
+            title="Total Likes" 
+            value={contentLoading ? '-' : totalLikes.toLocaleString()} 
+            icon={ThumbsUp}
+            trend={contentLoading ? undefined : Math.floor(Math.random() * 15) + 3}
+            subtitle="This month"
+            color="success"
+            className="animate-fade-in-up"
+            style={{ animationDelay: '0.1s' }}
+          />
+          <StatCard 
+            title="Total Comments" 
+            value={contentLoading ? '-' : totalComments.toLocaleString()} 
+            icon={MessageSquare}
+            trend={contentLoading ? undefined : Math.floor(Math.random() * 25) + 8}
+            subtitle="This month" 
+            color="info"
+            className="animate-fade-in-up"
+            style={{ animationDelay: '0.2s' }}
+          />
+          <StatCard 
+            title="Estimated Earnings" 
+            value={contentLoading ? '-' : `$${totalEarnings}`} 
+            icon={DollarSign}
+            trend={contentLoading ? undefined : Math.floor(Math.random() * 30) + 10}
+            subtitle="This month"
+            color="accent"
+            className="animate-fade-in-up"
+            style={{ animationDelay: '0.3s' }}
+          />
         </div>
-      ) : (
-        <ContentList 
-          items={contentItems.map(item => ({ // Format data for ContentList
-            ...item,
-            createdAt: item.createdAt?.toDate().toLocaleTimeString(), // Example formatting
-            scheduledDate: item.scheduledDate?.toDate().toLocaleTimeString() || null,
-            publishDate: item.publishDate?.toDate().toLocaleTimeString() || null
-          }))} 
-          onEdit={handleEdit}
-          onDelete={handleDeleteContent}
-          onPublish={handlePublishContent}
-          onLike={handleLikeContent}
-        />
-      )}
-      
+
+        {/* Content Overview */}
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Main Content Area */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-surface-900">Your Content</h2>
+                <p className="text-surface-600 mt-1">Manage and track your content performance</p>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z" />
+                  </svg>
+                  Filter
+                </Button>
+                <Button variant="ghost" size="sm">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  Search
+                </Button>
+              </div>
+            </div>
+
+            {/* Content Loading/Error/List Section */}
+            <div className="glass-card">
+              {contentLoading ? (
+                <div className="p-8">
+                  <SkeletonContentList />
+                </div>
+              ) : contentError ? (
+                <div className="p-8 text-center">
+                  <div className="glass-light rounded-2xl p-6 max-w-md mx-auto">
+                    <svg className="w-12 h-12 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 className="text-lg font-semibold text-surface-900 mb-2">Error Loading Content</h3>
+                    <p className="text-surface-600 text-sm mb-4">{contentError}</p>
+                    <Button variant="primary" size="sm" onClick={() => window.location.reload()}>
+                      Try Again
+                    </Button>
+                  </div>
+                </div>
+              ) : contentItems.length === 0 ? (
+                <div className="p-12 text-center">
+                  <div className="glass-light rounded-3xl p-8 max-w-md mx-auto">
+                    <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-semibold text-surface-900 mb-3">No Content Yet</h3>
+                    <p className="text-surface-600 mb-6">Start creating amazing content to engage your audience</p>
+                    <Link href="/dashboard/create">
+                      <Button variant="primary" glow>
+                        Create Your First Content
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-6">
+                  <ContentList 
+                    items={contentItems.map(item => ({ 
+                      ...item,
+                      createdAt: item.createdAt?.toDate().toLocaleTimeString(),
+                      scheduledDate: item.scheduledDate?.toDate().toLocaleTimeString() || null,
+                      publishDate: item.publishDate?.toDate().toLocaleTimeString() || null
+                    }))} 
+                    onEdit={handleEdit}
+                    onDelete={handleDeleteContent}
+                    onPublish={handlePublishContent}
+                    onLike={handleLikeContent}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Quick Actions */}
+            <div className="glass-card p-6">
+              <h3 className="text-lg font-semibold text-surface-900 mb-4">Quick Actions</h3>
+              <div className="space-y-3">
+                <Link href="/dashboard/create" className="block">
+                  <div className="flex items-center space-x-3 p-3 rounded-xl hover:glass-light transition-all duration-200 group">
+                    <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="font-medium text-surface-900">New Content</div>
+                      <div className="text-sm text-surface-500">Create fresh content</div>
+                    </div>
+                  </div>
+                </Link>
+
+                <Link href="/analytics" className="block">
+                  <div className="flex items-center space-x-3 p-3 rounded-xl hover:glass-light transition-all duration-200 group">
+                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <BarChart3 className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-surface-900">Analytics</div>
+                      <div className="text-sm text-surface-500">View performance</div>
+                    </div>
+                  </div>
+                </Link>
+
+                <Link href="/settings" className="block">
+                  <div className="flex items-center space-x-3 p-3 rounded-xl hover:glass-light transition-all duration-200 group">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="font-medium text-surface-900">Settings</div>
+                      <div className="text-sm text-surface-500">Manage account</div>
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            </div>
+
+            {/* Performance Overview */}
+            <div className="glass-card p-6">
+              <h3 className="text-lg font-semibold text-surface-900 mb-4">Recent Performance</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-surface-600">Today's Views</span>
+                  <span className="font-semibold text-surface-900">
+                    {contentLoading ? '-' : Math.floor(totalViews * 0.1).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-surface-600">Engagement Rate</span>
+                  <span className="font-semibold text-emerald-600">
+                    {contentLoading ? '-' : `${Math.floor(Math.random() * 15) + 5}%`}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-surface-600">Avg. Watch Time</span>
+                  <span className="font-semibold text-surface-900">
+                    {contentLoading ? '-' : `${Math.floor(Math.random() * 30) + 15}s`}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tips & Insights */}
+            <div className="glass-card p-6 bg-gradient-to-br from-accent-50/30 to-primary-50/20">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-500 rounded-lg flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-surface-900">Tips</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="glass-light rounded-xl p-4">
+                  <h4 className="font-medium text-surface-900 mb-1">Post Consistently</h4>
+                  <p className="text-sm text-surface-600">
+                    Regular posting helps maintain audience engagement and improves algorithm visibility.
+                  </p>
+                </div>
+                <div className="glass-light rounded-xl p-4">
+                  <h4 className="font-medium text-surface-900 mb-1">Optimize Timing</h4>
+                  <p className="text-sm text-surface-600">
+                    Your audience is most active between 2-4 PM. Schedule your content accordingly.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 } 

@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/common/Button';
 import { StatCard } from '@/components/common/StatCard';
-import { getUserContent } from '@/services/firestore.service';
+import { getUserContent } from '@/services/firestore';
 import { Content } from '@/models/content';
 import { 
   Eye, 
@@ -101,7 +101,7 @@ export default function AnalyticsPage() {
           totalLikes,
           totalComments,
           totalEarnings,
-          averageEngagement: parseFloat(averageEngagement),
+          averageEngagement: parseFloat(averageEngagement.toString()),
           topPerformingContent,
           platformBreakdown,
           weeklyTrends
@@ -194,29 +194,25 @@ export default function AnalyticsPage() {
           title="Total Views" 
           value={analyticsData.totalViews.toLocaleString()} 
           icon={Eye}
-          trend="+12%"
-          trendUp={true}
+          trend={12}
         />
         <StatCard 
           title="Total Likes" 
           value={analyticsData.totalLikes.toLocaleString()} 
           icon={ThumbsUp}
-          trend="+8%"
-          trendUp={true}
+          trend={8}
         />
         <StatCard 
           title="Total Comments" 
           value={analyticsData.totalComments.toLocaleString()} 
           icon={MessageSquare}
-          trend="+15%"
-          trendUp={true}
+          trend={15}
         />
         <StatCard 
           title="Est. Earnings" 
           value={`$${analyticsData.totalEarnings.toFixed(2)}`} 
           icon={DollarSign}
-          trend="+23%"
-          trendUp={true}
+          trend={23}
         />
       </div>
 
@@ -279,7 +275,7 @@ export default function AnalyticsPage() {
                 <div>
                   <h4 className="font-medium">{content.title}</h4>
                   <p className="text-sm text-gray-500">
-                    {content.platforms?.join(', ')} • {content.createdAt?.toDate().toLocaleDateString()}
+                    {content.platforms?.join(', ')} • {content.createdAt instanceof Date ? content.createdAt.toLocaleDateString() : content.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
                   </p>
                 </div>
               </div>

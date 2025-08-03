@@ -72,4 +72,5 @@ if (shouldUseEmulator && typeof window !== 'undefined') {
   });
 }
 
-export { app, auth, db, storage, functions, analytics }; 
+export { app, auth, db, storage, functions, analytics };
+export const firestore = db; 

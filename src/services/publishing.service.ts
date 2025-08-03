@@ -1,6 +1,6 @@
 import { Content } from '@/models/content';
 import { PlatformConnection } from '@/models/platformConnection';
-import { getCreatorContentById, getUserPlatformConnections, updateCreatorContent } from './firestore.service'; // Assuming getUserPlatformConnections fetches specific connections or all
+import { getCreatorContentById, getUserPlatformConnections, updateCreatorContent } from './firestore'; // Assuming getUserPlatformConnections fetches specific connections or all
 
 // TODO: Add necessary imports for platform SDKs or fetch API
 

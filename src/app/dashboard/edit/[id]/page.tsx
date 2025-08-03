@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { getCreatorContentById, updateCreatorContent } from '@/services/firestore.service';
+import { getCreatorContentById, updateCreatorContent } from '@/services/firestore';
 import EditContentForm from '@/components/content/EditContentForm';
 import { Content } from '@/models/content';
 import { Timestamp } from 'firebase/firestore';

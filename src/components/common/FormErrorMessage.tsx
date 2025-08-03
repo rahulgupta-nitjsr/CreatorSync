@@ -18,4 +18,5 @@ const FormErrorMessage: React.FC<FormErrorMessageProps> = ({
   );
 };
 
+export { FormErrorMessage };
 export default FormErrorMessage; 

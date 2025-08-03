@@ -1,23 +1,49 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { Notification } from '@/services/notifications';
+import { Button } from '@/components/common/Button';
+import { 
+  Bell, 
+  Settings, 
+  User, 
+  Home, 
+  BarChart3, 
+  Users, 
+  CreditCard, 
+  Menu, 
+  X,
+  LogOut,
+  Sparkles
+} from 'lucide-react';
 
 export function Navbar() {
-  const { user, loading, logOut } = useAuth();
+  const { user, loading, logOut, userProfile } = useAuth();
   const { notifications, unreadCount, markAllAsRead } = useNotifications();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  
+  // Handle scroll effect for navbar
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   
   const handleSignOut = async () => {
     try {
       await logOut();
-      // Redirect happens automatically due to auth state change
+      setIsMenuOpen(false);
+      setIsNotificationsOpen(false);
     } catch (error) {
       console.error('Sign out error:', error);
     }
@@ -26,164 +52,157 @@ export function Navbar() {
   const isActive = (path: string) => {
     return pathname === path || pathname?.startsWith(`${path}/`);
   };
+
+  const navigationItems = [
+    { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+    { name: 'Community', href: '/community', icon: Users },
+    { name: 'Pricing', href: '/pricing', icon: CreditCard },
+  ];
   
   return (
-    <nav className="bg-white shadow">
+    <nav className={`
+      fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out
+      ${scrolled 
+        ? 'glass-card-dark backdrop-blur-2xl shadow-glass-hover' 
+        : 'glass-ultra-light backdrop-blur-md'
+      }
+    `}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              <Link href="/" className="text-xl font-bold text-blue-600">
-                CreatorSync
+        <div className="flex justify-between items-center h-20">
+          {/* Left section - Logo and Navigation */}
+          <div className="flex items-center space-x-8">
+            {/* Logo */}
+            <div className="flex-shrink-0">
+              <Link href="/" className="flex items-center space-x-3 group">
+                <div className="glass-light p-2 rounded-2xl group-hover:scale-110 transition-transform duration-300">
+                  <Sparkles className="h-8 w-8 text-primary-600" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                    CreatorSync
+                  </span>
+                  <span className="text-xs text-surface-500 -mt-1">
+                    Premium Edition
+                  </span>
+                </div>
               </Link>
             </div>
             
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              {/* Public links */}
-              <Link
-                href="/"
-                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                  isActive('/') && !isActive('/dashboard')
-                    ? 'border-blue-500 text-gray-900'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                }`}
-              >
-                Home
-              </Link>
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center space-x-2">
+              {user && !loading && navigationItems.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.href);
+                
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`
+                      group relative px-4 py-2 rounded-xl font-medium text-sm
+                      transition-all duration-300 ease-out
+                      ${active 
+                        ? 'glass-medium text-primary-700 shadow-warm' 
+                        : 'text-surface-600 hover:text-surface-900 hover:glass-light'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Icon className={`h-4 w-4 ${active ? 'text-primary-600' : 'text-surface-500'}`} />
+                      <span>{item.name}</span>
+                    </div>
+                    
+                    {/* Active indicator */}
+                    {active && (
+                      <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-gradient-primary rounded-full animate-glow" />
+                    )}
+                    
+                    {/* Hover effect */}
+                    <div className="absolute inset-0 bg-gradient-primary opacity-0 group-hover:opacity-5 rounded-xl transition-opacity duration-300" />
+                  </Link>
+                );
+              })}
               
-              <Link
-                href="/pricing"
-                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                  isActive('/pricing')
-                    ? 'border-blue-500 text-gray-900'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                }`}
-              >
-                Pricing
-              </Link>
-              
-              {/* Private links - only shown when logged in */}
-              {user && !loading && (
+              {/* Public navigation for non-authenticated users */}
+              {!user && !loading && (
                 <>
                   <Link
-                    href="/dashboard"
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      isActive('/dashboard')
-                        ? 'border-blue-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    }`}
+                    href="/"
+                    className={`
+                      group relative px-4 py-2 rounded-xl font-medium text-sm
+                      transition-all duration-300 ease-out
+                      ${isActive('/') && !isActive('/dashboard')
+                        ? 'glass-medium text-primary-700 shadow-warm' 
+                        : 'text-surface-600 hover:text-surface-900 hover:glass-light'
+                      }
+                    `}
                   >
-                    Dashboard
+                    <div className="flex items-center space-x-2">
+                      <Home className="h-4 w-4" />
+                      <span>Home</span>
+                    </div>
                   </Link>
                   
                   <Link
-                    href="/dashboard/content"
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      isActive('/dashboard/content')
-                        ? 'border-blue-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    }`}
+                    href="/pricing"
+                    className={`
+                      group relative px-4 py-2 rounded-xl font-medium text-sm
+                      transition-all duration-300 ease-out
+                      ${isActive('/pricing')
+                        ? 'glass-medium text-primary-700 shadow-warm' 
+                        : 'text-surface-600 hover:text-surface-900 hover:glass-light'
+                      }
+                    `}
                   >
-                    Content
-                  </Link>
-                  
-                  <Link
-                    href="/analytics"
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      isActive('/analytics')
-                        ? 'border-blue-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    }`}
-                  >
-                    Analytics
-                  </Link>
-                  
-                  <Link
-                    href="/monetization"
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      isActive('/monetization')
-                        ? 'border-blue-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    }`}
-                  >
-                    Monetization
-                  </Link>
-                  
-                  <Link
-                    href="/community"
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      isActive('/community')
-                        ? 'border-blue-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    }`}
-                  >
-                    Community
-                  </Link>
-                  
-                  <Link
-                    href="/settings/profile"
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      isActive('/settings')
-                        ? 'border-blue-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    }`}
-                  >
-                    Settings
+                    <div className="flex items-center space-x-2">
+                      <CreditCard className="h-4 w-4" />
+                      <span>Pricing</span>
+                    </div>
                   </Link>
                 </>
               )}
             </div>
           </div>
           
-          <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            {/* Not logged in - show login/register */}
+          {/* Right section - User actions and authentication */}
+          <div className="flex items-center space-x-4">
+            {/* Authentication buttons for non-logged in users */}
             {!user && !loading && (
-              <div className="flex space-x-4">
-                <Link 
-                  href="/login"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-600 bg-white hover:bg-gray-50"
+              <div className="flex items-center space-x-3">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="hidden sm:inline-flex"
                 >
-                  Log in
-                </Link>
+                  <Link href="/login">Log in</Link>
+                </Button>
                 
-                <Link
-                  href="/register"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                <Button 
+                  variant="primary" 
+                  size="sm"
+                  glow
                 >
-                  Sign up
-                </Link>
+                  <Link href="/register">Get Started</Link>
+                </Button>
               </div>
             )}
             
-            {/* Logged in - show notifications and profile dropdown */}
+            {/* User actions for authenticated users */}
             {user && !loading && (
-              <div className="flex items-center">
-                {/* Notifications bell */}
-                <div className="relative ml-3">
+              <div className="flex items-center space-x-3">
+                {/* Notifications */}
+                <div className="relative">
                   <button
                     type="button"
-                    className="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="glass-light p-3 rounded-2xl hover:glass-medium transition-all duration-300 group"
                     onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
                   >
-                    <span className="sr-only">View notifications</span>
-                    <svg 
-                      className="h-6 w-6" 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor"
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth="2" 
-                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" 
-                      />
-                    </svg>
+                    <Bell className="h-5 w-5 text-surface-600 group-hover:text-primary-600 transition-colors" />
                     
                     {/* Notification badge */}
                     {unreadCount > 0 && (
-                      <span className="absolute top-0 right-0 block h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                      <span className="absolute -top-1 -right-1 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse shadow-lg">
                         {unreadCount > 9 ? '9+' : unreadCount}
                       </span>
                     )}
@@ -191,336 +210,372 @@ export function Navbar() {
                   
                   {/* Notifications dropdown */}
                   {isNotificationsOpen && (
-                    <div className="origin-top-right absolute right-0 mt-2 w-80 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-10">
-                      <div className="px-4 py-2 text-sm text-gray-700 border-b flex justify-between items-center">
-                        <h3 className="font-medium">Notifications</h3>
-                        <button 
-                          onClick={markAllAsRead} 
-                          className="text-xs text-blue-600 hover:text-blue-800"
-                        >
-                          Mark all as read
-                        </button>
+                    <div className="absolute right-0 mt-4 w-96 glass-card animate-slide-down z-50">
+                      <div className="p-4 border-b border-glass-border">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-surface-900">Notifications</h3>
+                          <Button 
+                            variant="text" 
+                            size="sm"
+                            onClick={markAllAsRead}
+                            className="text-primary-600 hover:text-primary-700"
+                          >
+                            Mark all read
+                          </Button>
+                        </div>
                       </div>
                       
                       <div className="max-h-80 overflow-y-auto">
                         {notifications.length === 0 ? (
-                          <p className="px-4 py-2 text-sm text-gray-500">No notifications</p>
+                          <div className="p-8 text-center">
+                            <Bell className="h-12 w-12 text-surface-300 mx-auto mb-4" />
+                            <p className="text-surface-500">No notifications yet</p>
+                          </div>
                         ) : (
                           notifications.slice(0, 5).map(notification => (
                             <div 
                               key={notification.id} 
-                              className={`px-4 py-2 border-b text-sm ${notification.read ? 'bg-white' : 'bg-blue-50'}`}
+                              className={`p-4 border-b border-glass-border last:border-0 hover:bg-gradient-to-r hover:from-primary-50/30 hover:to-transparent transition-all duration-200 ${
+                                !notification.read ? 'bg-primary-50/20' : ''
+                              }`}
                             >
-                              <div className="flex justify-between">
-                                <span className="font-medium">{notification.type.charAt(0).toUpperCase() + notification.type.slice(1)}</span>
-                                <span className="text-xs text-gray-500">
-                                  {notification.createdAt?.toDate().toLocaleDateString() || 'Unknown date'}
+                              <div className="flex justify-between items-start mb-2">
+                                <span className="font-medium text-surface-800 capitalize">
+                                  {notification.type}
+                                </span>
+                                <span className="text-xs text-surface-500">
+                                  {notification.createdAt?.toDate().toLocaleDateString() || 'Unknown'}
                                 </span>
                               </div>
-                              <p className="text-gray-600">{notification.message}</p>
+                              <p className="text-sm text-surface-600">{notification.message}</p>
+                              {!notification.read && (
+                                <div className="w-2 h-2 bg-primary-500 rounded-full mt-2 animate-pulse" />
+                              )}
                             </div>
                           ))
                         )}
                       </div>
                       
                       {notifications.length > 0 && (
-                        <Link 
-                          href="/notifications" 
-                          className="block px-4 py-2 text-sm text-center text-blue-600 hover:text-blue-800 border-t"
-                          onClick={() => setIsNotificationsOpen(false)}
-                        >
-                          View all notifications
-                        </Link>
+                        <div className="p-4 border-t border-glass-border">
+                          <Button 
+                            variant="ghost" 
+                            fullWidth
+                            onClick={() => {
+                              setIsNotificationsOpen(false);
+                              // Navigate to notifications page
+                            }}
+                          >
+                            View All Notifications
+                          </Button>
+                        </div>
                       )}
                     </div>
                   )}
                 </div>
               
                 {/* Profile dropdown */}
-                <div className="ml-3 relative">
-                  <div>
-                    <button
-                      type="button"
-                      className="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      id="user-menu-button"
-                      aria-expanded={isMenuOpen}
-                      aria-haspopup="true"
-                      onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    >
-                      <span className="sr-only">Open user menu</span>
-                      {user.photoURL ? (
-                        <img className="h-8 w-8 rounded-full" src={user.photoURL} alt="" />
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                          <span className="text-blue-500 font-medium">
-                            {user.displayName?.[0] || user.email?.[0] || '?'}
-                          </span>
-                        </div>
-                      )}
-                    </button>
-                  </div>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="flex items-center space-x-3 glass-light p-2 pr-4 rounded-2xl hover:glass-medium transition-all duration-300 group"
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  >
+                    {user.photoURL ? (
+                      <img 
+                        className="h-8 w-8 rounded-xl object-cover shadow-md" 
+                        src={user.photoURL} 
+                        alt={user.displayName || 'User'} 
+                      />
+                    ) : (
+                      <div className="h-8 w-8 rounded-xl bg-gradient-primary flex items-center justify-center shadow-md">
+                        <span className="text-white font-semibold text-sm">
+                          {user.displayName?.[0] || user.email?.[0] || '?'}
+                        </span>
+                      </div>
+                    )}
+                    
+                    <div className="hidden sm:block text-left">
+                      <div className="text-sm font-medium text-surface-800 group-hover:text-primary-700 transition-colors">
+                        {user.displayName || 'User'}
+                      </div>
+                      <div className="text-xs text-surface-500">
+                        {userProfile?.tier || 'Free Plan'}
+                      </div>
+                    </div>
+                    
+                    <Settings className="h-4 w-4 text-surface-400 group-hover:text-primary-500 transition-colors hidden sm:block" />
+                  </button>
                   
                   {isMenuOpen && (
-                    <div 
-                      className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-10"
-                      role="menu" 
-                      aria-orientation="vertical"
-                      aria-labelledby="user-menu-button"
-                    >
-                      <div className="px-4 py-2 text-sm text-gray-700 border-b">
-                        <div className="font-medium">{user.displayName || 'User'}</div>
-                        <div className="text-gray-500 truncate">{user.email}</div>
+                    <div className="absolute right-0 mt-4 w-64 glass-card animate-slide-down z-50">
+                      {/* User info header */}
+                      <div className="p-4 border-b border-glass-border">
+                        <div className="flex items-center space-x-3">
+                          {user.photoURL ? (
+                            <img 
+                              className="h-12 w-12 rounded-2xl object-cover shadow-md" 
+                              src={user.photoURL} 
+                              alt={user.displayName || 'User'} 
+                            />
+                          ) : (
+                            <div className="h-12 w-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-md">
+                              <span className="text-white font-bold text-lg">
+                                {user.displayName?.[0] || user.email?.[0] || '?'}
+                              </span>
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-semibold text-surface-900">
+                              {user.displayName || 'User'}
+                            </div>
+                            <div className="text-sm text-surface-500 truncate max-w-[180px]">
+                              {user.email}
+                            </div>
+                            <div className="text-xs text-primary-600 font-medium">
+                              {userProfile?.tier || 'Free Plan'}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       
-                      <Link
-                        href="/settings/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        role="menuitem"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        Profile Settings
-                      </Link>
-                      
-                      <Link
-                        href="/settings/accounts"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        role="menuitem"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        Connected Accounts
-                      </Link>
-                      
-                      <button
-                        type="button"
-                        className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        role="menuitem"
-                        onClick={() => {
-                          setIsMenuOpen(false);
-                          handleSignOut();
-                        }}
-                      >
-                        Sign out
-                      </button>
+                      {/* Menu items */}
+                      <div className="p-2">
+                        <Link
+                          href="/settings/profile"
+                          className="flex items-center space-x-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-primary-50/30 hover:to-transparent transition-all duration-200 group"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <User className="h-4 w-4 text-surface-500 group-hover:text-primary-600" />
+                          <span className="text-surface-700 group-hover:text-surface-900">Profile Settings</span>
+                        </Link>
+                        
+                        <Link
+                          href="/settings/accounts"
+                          className="flex items-center space-x-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-primary-50/30 hover:to-transparent transition-all duration-200 group"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <Settings className="h-4 w-4 text-surface-500 group-hover:text-primary-600" />
+                          <span className="text-surface-700 group-hover:text-surface-900">Connected Accounts</span>
+                        </Link>
+                        
+                        <div className="border-t border-glass-border my-2" />
+                        
+                        <button
+                          type="button"
+                          className="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-red-50 hover:to-transparent transition-all duration-200 group"
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            handleSignOut();
+                          }}
+                        >
+                          <LogOut className="h-4 w-4 text-surface-500 group-hover:text-red-600" />
+                          <span className="text-surface-700 group-hover:text-red-600">Sign Out</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
             )}
+            
+            {/* Mobile menu button */}
+            <div className="flex lg:hidden">
+              <button
+                type="button"
+                className="glass-light p-3 rounded-2xl hover:glass-medium transition-all duration-300"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+              >
+                {isMenuOpen ? (
+                  <X className="h-6 w-6 text-surface-600" />
+                ) : (
+                  <Menu className="h-6 w-6 text-surface-600" />
+                )}
+              </button>
+            </div>
           </div>
           
-          {/* Mobile menu button */}
-          <div className="flex items-center sm:hidden">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-              aria-controls="mobile-menu"
-              aria-expanded={isMenuOpen}
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              <span className="sr-only">{isMenuOpen ? 'Close menu' : 'Open menu'}</span>
-              
-              {/* Icon when menu is closed */}
-              <svg
-                className={`${isMenuOpen ? 'hidden' : 'block'} h-6 w-6`}
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              
-              {/* Icon when menu is open */}
-              <svg
-                className={`${isMenuOpen ? 'block' : 'hidden'} h-6 w-6`}
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
         </div>
       </div>
       
-      {/* Mobile menu */}
-      <div className={`${isMenuOpen ? 'block' : 'hidden'} sm:hidden`} id="mobile-menu">
-        <div className="pt-2 pb-3 space-y-1">
-          <Link
-            href="/"
-            className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
-              isActive('/') && !isActive('/dashboard')
-                ? 'border-blue-500 text-blue-700 bg-blue-50'
-                : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
-            }`}
+      {/* Mobile Navigation Overlay */}
+      {isMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-40 flex">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm" 
             onClick={() => setIsMenuOpen(false)}
-          >
-            Home
-          </Link>
+          />
           
-          <Link
-            href="/pricing"
-            className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
-              isActive('/pricing')
-                ? 'border-blue-500 text-blue-700 bg-blue-50'
-                : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
-            }`}
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Pricing
-          </Link>
-          
-          {user && !loading && (
-            <>
-              <Link
-                href="/dashboard"
-                className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
-                  isActive('/dashboard') && !isActive('/dashboard/content')
-                    ? 'border-blue-500 text-blue-700 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
-                }`}
+          {/* Mobile menu panel */}
+          <div className="relative flex flex-col ml-auto h-full w-full max-w-sm glass-card-dark animate-slide-down">
+            <div className="flex items-center justify-between p-6 border-b border-glass-border">
+              <div className="flex items-center space-x-3">
+                <div className="glass-light p-2 rounded-xl">
+                  <Sparkles className="h-6 w-6 text-primary-600" />
+                </div>
+                <div>
+                  <div className="font-bold text-surface-900">CreatorSync</div>
+                  <div className="text-xs text-surface-500">Premium Edition</div>
+                </div>
+              </div>
+              <button
                 onClick={() => setIsMenuOpen(false)}
+                className="glass-light p-2 rounded-xl hover:glass-medium transition-all duration-300"
               >
-                Dashboard
-              </Link>
-              
-              <Link
-                href="/dashboard/content"
-                className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
-                  isActive('/dashboard/content')
-                    ? 'border-blue-500 text-blue-700 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Content
-              </Link>
-              
-              <Link
-                href="/analytics"
-                className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
-                  isActive('/analytics')
-                    ? 'border-blue-500 text-blue-700 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Analytics
-              </Link>
-              
-              <Link
-                href="/monetization"
-                className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
-                  isActive('/monetization')
-                    ? 'border-blue-500 text-blue-700 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Monetization
-              </Link>
-              
-              <Link
-                href="/community"
-                className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
-                  isActive('/community')
-                    ? 'border-blue-500 text-blue-700 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Community
-              </Link>
-              
-              <Link
-                href="/settings/profile"
-                className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
-                  isActive('/settings')
-                    ? 'border-blue-500 text-blue-700 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Settings
-              </Link>
-            </>
-          )}
-        </div>
-        
-        <div className="pt-4 pb-3 border-t border-gray-200">
-          {!user && !loading ? (
-            <div className="space-y-1 px-4">
-              <Link
-                href="/login"
-                className="block text-center px-4 py-2 rounded-md text-base font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Log in
-              </Link>
-              
-              <Link
-                href="/register"
-                className="block text-center px-4 py-2 rounded-md text-base font-medium text-white bg-blue-600 hover:bg-blue-700"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Sign up
-              </Link>
+                <X className="h-5 w-5 text-surface-600" />
+              </button>
             </div>
-          ) : user ? (
-            <>
-              <div className="flex items-center px-4">
-                <div className="flex-shrink-0">
-                  {user.photoURL ? (
-                    <img className="h-10 w-10 rounded-full" src={user.photoURL} alt="" />
-                  ) : (
-                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                      <span className="text-blue-500 font-medium">
-                        {user.displayName?.[0] || user.email?.[0] || '?'}
-                      </span>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Navigation items */}
+              <div className="space-y-2">
+                {/* Public navigation */}
+                {!user && !loading && (
+                  <>
+                    <Link
+                      href="/"
+                      className={`flex items-center space-x-3 p-4 rounded-2xl transition-all duration-300 ${
+                        isActive('/') && !isActive('/dashboard')
+                          ? 'glass-medium text-primary-700 shadow-warm'
+                          : 'text-surface-600 hover:glass-light hover:text-surface-900'
+                      }`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Home className="h-5 w-5" />
+                      <span className="font-medium">Home</span>
+                    </Link>
+                    
+                    <Link
+                      href="/pricing"
+                      className={`flex items-center space-x-3 p-4 rounded-2xl transition-all duration-300 ${
+                        isActive('/pricing')
+                          ? 'glass-medium text-primary-700 shadow-warm'
+                          : 'text-surface-600 hover:glass-light hover:text-surface-900'
+                      }`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <CreditCard className="h-5 w-5" />
+                      <span className="font-medium">Pricing</span>
+                    </Link>
+                  </>
+                )}
+                
+                {/* Authenticated navigation */}
+                {user && !loading && navigationItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.href);
+                  
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`flex items-center space-x-3 p-4 rounded-2xl transition-all duration-300 ${
+                        active 
+                          ? 'glass-medium text-primary-700 shadow-warm' 
+                          : 'text-surface-600 hover:glass-light hover:text-surface-900'
+                      }`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="font-medium">{item.name}</span>
+                      {active && (
+                        <div className="ml-auto w-2 h-2 bg-gradient-primary rounded-full animate-pulse" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Mobile footer */}
+            <div className="border-t border-glass-border p-6">
+              {!user && !loading ? (
+                <div className="space-y-3">
+                  <Button 
+                    variant="ghost" 
+                    fullWidth 
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Link href="/login" className="w-full">Log In</Link>
+                  </Button>
+                  <Button 
+                    variant="primary" 
+                    fullWidth 
+                    glow
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Link href="/register" className="w-full">Get Started</Link>
+                  </Button>
+                </div>
+              ) : user ? (
+                <div className="space-y-4">
+                  {/* User profile section */}
+                  <div className="flex items-center space-x-3 p-4 glass-light rounded-2xl">
+                    {user.photoURL ? (
+                      <img 
+                        className="h-12 w-12 rounded-2xl object-cover shadow-md" 
+                        src={user.photoURL} 
+                        alt={user.displayName || 'User'} 
+                      />
+                    ) : (
+                      <div className="h-12 w-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-md">
+                        <span className="text-white font-bold text-lg">
+                          {user.displayName?.[0] || user.email?.[0] || '?'}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-surface-900 truncate">
+                        {user.displayName || 'User'}
+                      </div>
+                      <div className="text-sm text-surface-500 truncate">
+                        {user.email}
+                      </div>
+                      <div className="text-xs text-primary-600 font-medium">
+                        {userProfile?.tier || 'Free Plan'}
+                      </div>
                     </div>
-                  )}
+                  </div>
+                  
+                  {/* Quick actions */}
+                  <div className="space-y-2">
+                    <Link
+                      href="/settings/profile"
+                      className="flex items-center space-x-3 p-3 rounded-xl hover:glass-light transition-all duration-200 text-surface-700"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <User className="h-4 w-4" />
+                      <span>Profile Settings</span>
+                    </Link>
+                    
+                    <Link
+                      href="/settings/accounts"
+                      className="flex items-center space-x-3 p-3 rounded-xl hover:glass-light transition-all duration-200 text-surface-700"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Settings className="h-4 w-4" />
+                      <span>Connected Accounts</span>
+                    </Link>
+                    
+                    <button
+                      type="button"
+                      className="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-red-50 transition-all duration-200 text-surface-700 hover:text-red-600"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        handleSignOut();
+                      }}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="ml-3">
-                  <div className="text-base font-medium text-gray-800">{user.displayName || 'User'}</div>
-                  <div className="text-sm font-medium text-gray-500">{user.email}</div>
-                </div>
-              </div>
-              <div className="mt-3 space-y-1">
-                <Link
-                  href="/settings/profile"
-                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Profile Settings
-                </Link>
-                
-                <Link
-                  href="/settings/accounts"
-                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Connected Accounts
-                </Link>
-                
-                <button
-                  type="button"
-                  className="w-full text-left block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    handleSignOut();
-                  }}
-                >
-                  Sign out
-                </button>
-              </div>
-            </>
-          ) : null}
+              ) : null}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </nav>
   );
 } 

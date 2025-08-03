@@ -55,4 +55,5 @@ if (!admin.apps.length) {
 // Export the initialized admin services
 // Note: Check if `firestoreAdmin` etc. are defined before using them in API routes
 // to handle cases where initialization failed due to missing env vars.
-export { firestoreAdmin, authAdmin, storageAdmin }; 
+export { firestoreAdmin, authAdmin, storageAdmin };
+export const auth = authAdmin; 

@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/common/Button';
 import { StatCard } from '@/components/common/StatCard';
-import { getUserContent } from '@/services/firestore.service';
+import { getUserContent } from '@/services/firestore';
 import { Content } from '@/models/content';
 import { 
   Users, 
